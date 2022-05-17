@@ -333,4 +333,245 @@ public interface GuestbookRepository extends JpaRepository<Guestbook, Long> {
 }
 
 ```
+- https://mvnrepository.com/artifact/com.querydsl/querydsl-jpa 접속
+- Querydsl JPA Support 4.3.1 복사 -> build.gradle파일의 dependencies 안에 코드 추가
+![image](https://user-images.githubusercontent.com/86938974/168729990-2cf544ea-8f34-441d-924e-051186dc4c87.png)
+
+
+```
+plugins {
+    id 'org.springframework.boot' version '2.6.7'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+    id 'war'
+    id 'com.ewerk.gradle.plugins.querydsl' version '1.0.10'
+}
+
+group = 'org.zerock'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    annotationProcessor 'org.projectlombok:lombok'
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
+    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.7.1'
+    // https://mvnrepository.com/artifact/org.thymeleaf.extras/thymeleaf-extras-java8time
+    implementation group: 'org.thymeleaf.extras', name: 'thymeleaf-extras-java8time', version: '3.0.4.RELEASE'
+    // https://mvnrepository.com/artifact/com.querydsl/querydsl-jpa
+    implementation group: 'com.querydsl', name: 'querydsl-jpa', version: '5.0.0'
+    // https://mvnrepository.com/artifact/com.querydsl/querydsl-apt
+    implementation group: 'com.querydsl', name: 'querydsl-apt', version: '5.0.0'
+
+
+
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+def querydslDir = "$buildDir/generated/querydsl"
+
+querydsl {
+    jpa = true
+    querydslSourcesDir = querydslDir
+}
+
+sourceSets {
+    main.java.srcDir querydslDir
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    querydsl.extendsFrom compileClasspath
+}
+
+compileQuerydsl {
+    options.annotationProcessorPath = configurations.querydsl
+}
+
+```
+- 아래 폴더 자동 생성
+![image](https://user-images.githubusercontent.com/86938974/168734560-186b3deb-c4ea-4908-a8c9-7135c587e5a6.png)
+
+
+ * 엔티티의 테스트
+
+- Guestbook에 다음 코드 추가
+```
+public void changeTitle(String title){
+        this.title = title;
+    }
+
+    public void changeContent(String content){
+        this.content = content;
+    }
+```
+
+- GuestbookRepositoryTests 생성
+![image](https://user-images.githubusercontent.com/86938974/168736191-f80d374e-47f2-402e-9e66-018bfb5cc77c.png)
+
+```
+package org.zerock.guestbook.repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.zerock.guestbook.entity.Guestbook;
+import org.zerock.guestbook.respository.GuestbookRepository;
+
+import java.util.Optional;
+import java.util.stream.IntStream;
+
+@SpringBootTest
+public class GuestbookRepositoryTests {
+
+    @Autowired
+    private GuestbookRepository guestbookRepository;
+
+    @Test
+    public void insertDummies(){
+
+        IntStream.rangeClosed(1, 300).forEach(i->{
+            Guestbook guestbook = Guestbook.builder()
+                    .title("Title..."+i)
+                    .content("Content..."+i)
+                    .writer("user"+(i%10))
+                    .build();
+            System.out.println(guestbookRepository.save(guestbook));
+        });
+    }
+
+    @Test
+    public void updateTest(){
+        Optional<Guestbook> result = guestbookRepository.findById(300L);
+
+        if(result.isPresent()){
+            Guestbook guestbook = result.get();
+            guestbook.changeTitle("Change Title....");
+            guestbook.changeContent("Change Content....");
+            guestbookRepository.save(guestbook);
+        }
+    }
+}
+
+```
+- 실행 결과
+![image](https://user-images.githubusercontent.com/86938974/168737190-740c12ff-dd0d-4b01-871b-54ee297670a2.png)
+- 변경 확인
+![image](https://user-images.githubusercontent.com/86938974/168738685-6e2c3063-8fd2-4033-a39c-22c48cc8057c.png)
+
+ * Querydsl 테스트
+
+- /제목/내용/작성자 같이 단 하나의 항목 검색
+- '제목+내용'/'내용+작성자'/'제목+작성자'와 같이 2개의 항목 검색
+- 제목+내용+작성자와 같이 3개의 항목 검색
+- 이런 상황을 대비해서 상황에 맞게 쿼리를 처리하는 Querydsl이 필요
+
+```
+package org.zerock.guestbook.repository;
+
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.zerock.guestbook.entity.Guestbook;
+import org.zerock.guestbook.entity.QGuestbook;
+import org.zerock.guestbook.respository.GuestbookRepository;
+
+
+import java.util.Optional;
+import java.util.stream.IntStream;
+
+@SpringBootTest
+public class GuestbookRepositoryTests {
+
+    @Autowired
+    private GuestbookRepository guestbookRepository;
+
+    @Test
+    public void insertDummies(){
+
+        IntStream.rangeClosed(1, 300).forEach(i->{
+            Guestbook guestbook = Guestbook.builder()
+                    .title("Title..."+i)
+                    .content("Content..."+i)
+                    .writer("user"+(i%10))
+                    .build();
+            System.out.println(guestbookRepository.save(guestbook));
+        });
+    }
+
+    @Test
+    public void updateTest(){
+        Optional<Guestbook> result = guestbookRepository.findById(300L);
+
+        if(result.isPresent()){
+            Guestbook guestbook = result.get();
+            guestbook.changeTitle("Change Title....");
+            guestbook.changeContent("Change Content....");
+            guestbookRepository.save(guestbook);
+        }
+    }
+    @Test
+    public void testQuery1(){
+        Pageable pageable = (Pageable) PageRequest.of(0, 10, Sort.by("gno").descending());
+
+        QGuestbook qGuestbook = QGuestbook.guestbook; //1
+        String keyword = "1";
+        BooleanBuilder builder = new BooleanBuilder(); // 2
+        BooleanExpression expression = qGuestbook.title.contains(keyword); 
+        builder.and(expression);
+        Page<Guestbook> result = guestbookRepository.findAll(builder, pageable);
+
+        result.stream().forEach(guestbook -> {
+            System.out.println(guestbook);
+        });
+    }
+}
+@Test
+    public void testQuery2(){
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("gno").descending());
+        QGuestbook qGuestbook = QGuestbook.guestbook;
+        String keyword="1";
+        BooleanBuilder builder = new BooleanBuilder();
+        BooleanExpression exTitle = qGuestbook.title.contains(keyword);
+        BooleanExpression exContent = qGuestbook.content.contains(keyword);
+        BooleanExpression exAll = exTitle.or(exContent);
+        builder.and(exAll);
+        builder.and(qGuestbook.gno.gt(0L));
+        Page<Guestbook> result = guestbookRepository.findAll(builder, pageable);
+        
+        result.stream().forEach(guestbook -> {
+            System.out.println(guestbook);
+        });
+        
+    }
+```
+- 이를 통해 페이지 처리와 동시에 검색 처리 가능
+![image](https://user-images.githubusercontent.com/86938974/168746082-2092d295-44e9-488f-a18b-468ee85fd04f.png)
 
