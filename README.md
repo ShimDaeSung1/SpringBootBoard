@@ -575,3 +575,111 @@ public class GuestbookRepositoryTests {
 - 이를 통해 페이지 처리와 동시에 검색 처리 가능
 ![image](https://user-images.githubusercontent.com/86938974/168746082-2092d295-44e9-488f-a18b-468ee85fd04f.png)
 
+ * DTO 생성
+- GuestbookDTO 클래스
+![image](https://user-images.githubusercontent.com/86938974/168934613-97c845f4-8f7f-4df0-bf83-3816989bb37a.png)
+
+
+```
+package org.zerock.guestbook.dto;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+public class GuestbookDTO {
+    
+    private Long gno;
+    private String title;
+    private String content;
+    private String writer;
+    private LocalDateTime regDate, modDate;
+    
+}
+
+```
+- 서비스 계층에서는 GuestbookDTO를 이용해서 필요한 내용을 전달받고, 반환하도록 처리하는데 GuestbookService 인터페이스와 GuestbookServiceImpl 클래스를 작성한다.
+
+ * 등록과 DTO를 엔티티로 변환
+
+- 서비스 계층에서는 파라미터를 DTO타입으로 받기 때문에 이를 JPA로 처리하기 위해서는 엔티티 타입의 객체로 변환해야하는 작업이 반드시 필요하다.
+
+- GuestbookService 인터페이스(service 패키지 생성)
+![image](https://user-images.githubusercontent.com/86938974/168937280-3f923afc-ce2f-4e80-b28f-f2b4ef997453.png)
+
+```
+package org.zerock.guestbook.service;
+
+import org.zerock.guestbook.dto.GuestbookDTO;
+import org.zerock.guestbook.entity.Guestbook;
+
+public interface GuestbookService {
+    Long register(GuestbookDTO dto);
+
+    default Guestbook dtoToEntity(GuestbookDTO dto){
+        Guestbook entity = Guestbook.builder()
+                .gno(dto.getGno())
+                .title(dto.getTitle())
+                .content(dto.getContent())
+                .writer(dto.getWriter())
+                .build();
+        return entity;
+    }
+}
+
+```
+
+- GuestbookServiceImpl 클래스에는 스프링에서 빈으로 처리되도록 @Service 어노테이션 추가
+
+```
+package org.zerock.guestbook.service;
+
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Service;
+import org.zerock.guestbook.dto.GuestbookDTO;
+import org.zerock.guestbook.entity.Guestbook;
+import org.zerock.guestbook.respository.GuestbookRepository;
+
+
+@Service
+@Log4j2
+@RequiredArgsConstructor // final이나 @nonNull이 붙어있는 필드에 대해 생성자를 만들어줌
+public class GuestbookServiceImpl implements GuestbookService {
+
+    private final GuestbookRepository repository; // 반드시 final로 선언, @Autowired 생략 가능
+    
+    @Override
+    public Long register(GuestbookDTO dto){
+        
+        log.info("DTO-----------------------");
+        log.info(dto);
+        
+        Guestbook entity = dtoToEntity(dto);
+        
+        log.info(entity);
+        
+        repository.save(entity);
+        
+        return entity.getGno();
+    }
+}
+
+```
+- GuestbookServiceImpl 클래스는 JPA처리를 위해서 GuestbookRepository를 주입하고 클래스 선언 시에 @RequiredArgsConstructor를 이용해서 자동으로 주입한다.
+- register의 내부에서는 save()를 통해 저장하고, 저장된 후에 해당 엔티티가 가지는 gno값을 반환한다.
+- DTO객체는 Entity로 변환해서 사용하므로 dtoToEntity 메서드를 만들었다.
+
+
+
+
+
