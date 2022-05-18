@@ -679,7 +679,198 @@ public class GuestbookServiceImpl implements GuestbookService {
 - register의 내부에서는 save()를 통해 저장하고, 저장된 후에 해당 엔티티가 가지는 gno값을 반환한다.
 - DTO객체는 Entity로 변환해서 사용하므로 dtoToEntity 메서드를 만들었다.
 
+ * 목록 처리
+- PageRequestDTO 클래스
+```
+package org.zerock.guestbook.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+@Builder
+@AllArgsConstructor
+@Data
+public class PageRequestDTO {
+
+    private int page;
+    private int size;
+
+    public PageRequestDTO(){
+        this.page = 1;
+        this.size = 10;
+    }
+    public Pageable getPageable(Sort sort){
+        return PageRequest.of(page-1, size, sort);
+    }
+}
+```
+- PageRequestDTO는 화면에서 전달되는 page라는 파라미터와 size라는 파라미터를 수집하는 역할
+- JPA를 이용하는 경우에는 페이지 번호가 0부터 시작한다는 점을 감안해서 1페이지의 경우 0이 될 수 있도록 page-1을 하는 형태로 작성
+- 정렬은 나중에 다양한 상황에서 쓰기 위해 별도의 파라미터를 받는다.
+ 
+ * 페이지 결과 처리 DTO
+- Page<Entity>의 엔티티 객체들을 DTO객체로 변환해서 자료구조로 담는다.
+ 
+- PageResultDTO 클래스
+
+ ```
+ package org.zerock.guestbook.dto;
+
+import lombok.Data;
+import org.springframework.data.domain.Page;
+
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Data
+public class PageResultDTO<DTO, EN> {
+
+    private List<DTO> dtoList;
+
+    public PageResultDTO(Page<EN> result, Function<EN, DTO> fn){
+        //목록생성. dtoList에 저장
+        //map()함수에서 사용할 함수를 fn으로 지정
+        dtoList = result.stream().map(fn).collect(Collectors.toList());
+        //map함수 사용법
+        //배열or컬렉션or페이지.stream().map(화살표함수).collect(Collectors.toList())
+        //스트림은 하나씩 꺼내줌, 즉 result(Page<Guestbook>)에서 하나씩 꺼내어 map(fn)의 fn람다식을 하나씩 실행한다.
+        
+   }
+}
+
+ ```
+ * 서비스 계층에서는 목록 처리
+- GuestbookService 인터페이스의 추상메소드 하나 추가
+ ```
+ PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO);
+ 
+ default GuestbookDTO entityToDto(Guestbook entity){
+        GuestbookDTO dto = GuestbookDTO.builder()
+                .gno(entity.getGno())
+                .title(entity.getTitle())
+                .content(entity.getContent())
+                .writer(entity.getWriter())
+                .regDate(entity.getRegDate())
+                .modDate(entity.getModDate())
+                .build();
+
+        return dto;
+    }
+ ```
+ - GuestbookServiceImpl에서 Override
+ ```
+ package org.zerock.guestbook.service;
+
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.zerock.guestbook.dto.GuestbookDTO;
+import org.zerock.guestbook.dto.PageRequestDTO;
+import org.zerock.guestbook.dto.PageResultDTO;
+import org.zerock.guestbook.entity.Guestbook;
+import org.zerock.guestbook.respository.GuestbookRepository;
+
+import java.util.function.Function;
+
+
+@Service
+@Log4j2
+@RequiredArgsConstructor // final이나 @nonNull이 붙어있는 필드에 대해 생성자를 만들어줌
+public class GuestbookServiceImpl implements GuestbookService {
+
+    private final GuestbookRepository repository; // 반드시 final로 선언, @Autowired 생략 가능
+
+    @Override
+    public Long register(GuestbookDTO dto) {
+
+        log.info("DTO-----------------------");
+        log.info(dto);
+
+        Guestbook entity = dtoToEntity(dto);
+
+        log.info(entity);
+
+        repository.save(entity);
+
+        return entity.getGno(); // 글번호 리턴
+    }
+
+    @Override
+    public PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO requestDTO) {
+        Pageable pageable = requestDTO.getPageable(Sort.by("gno").descending());
+        Page<Guestbook> result = repository.findAll(pageable);
+        //PageResultDTO생성자의 map()함수에서
+        Function<Guestbook, GuestbookDTO> fn = (entity -> entityToDto(entity));
+
+        return new PageResultDTO<>(result, fn);
+    }
+}
+
+ ```
+- 목록 데이터 페이지 처리 (PageResultDTO 클래스)
+```
+ package org.zerock.guestbook.dto;
+
+import lombok.Data;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+@Data
+public class PageResultDTO<DTO, EN> {
+
+    private List<DTO> dtoList; //글목록을 저장하는 List
+    private int totalPage; //총 페이지수
+    private int page; //현재 페이지
+    private int size; //페이지당 보여지는 글 수
+    private int start; //1.......10에서 시작 번호
+    private int end; //1.......10 에서 끝 번호
+    private boolean prev; //이전블록 유무 여부
+    private boolean next; //다음블록 유무 여부
+    private List<Integer> pageList; //1.......10 번호 목록
+
+    public PageResultDTO(Page<EN> result, Function<EN, DTO> fn){
+        //목록생성. dtoList에 저장
+        //map()함수에서 사용할 함수를 fn으로 지정
+        dtoList = result.stream().map(fn).collect(Collectors.toList());
+        //map함수 사용법
+        //배열or컬렉션or페이지.stream().map(화살표함수).collect(Collectors.toList())
+        //스트림은 하나씩 꺼내줌, 즉 result(Page<Guestbook>)에서 하나씩 꺼내어 map(fn)의 fn람다식을 하나씩 실행한다.
+
+        totalPage = result.getTotalPages();
+        makePageList(result.getPageable());
+   }
+   //paging에 관련된 필드들의 값을 구해서 저장
+    private void makePageList(Pageable pageable){
+        this.page = pageable.getPageNumber() + 1; //페이지번호, 0부터 시작하므로 1을 추가
+        this.size = pageable.getPageSize(); // 페이지당 글 수
+
+        //temp and page
+        int tempEnd = (int)(Math.ceil(page/10.0))*10; // 1......10에서 10. 실제 페이지수가 tempEnd보다 작으면 실제 페이지수가 End
+        start = tempEnd-9; // 끝번호(10)에서 9를 빼면 처음 번호
+        prev = start>1; // 시작번호가 1보다 크면 최소 두번째 구간이므로 이전구간 존재
+        end = totalPage > tempEnd ? tempEnd:totalPage; //총페이지수가 현재구간의 tempEnd보다 작으면 총페이지수가 End가 됨
+        next = totalPage > tempEnd; // 총페이지수가 현재구간의 tempEnd보다 크면 다음 구간 존재
+
+        pageList = IntStream.rangeClosed(start, end).boxed().collect(Collectors.toList()); // 1....10까지의 수를 List에 저장
+    }
+}
+ 
+```
+ 
 
 
 
