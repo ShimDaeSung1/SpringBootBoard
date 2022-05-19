@@ -900,8 +900,8 @@ public class GuestbookController {
             <thead>
             <tr>
                 <th scope="col">#</th>
-                <th scope="col">Gno</th>
                 <th scope="col">Title</th>
+                <th scope="col">Writer</th>
                 <th scope="col">Regdate</th>
             </tr>
             </thead>
@@ -918,8 +918,137 @@ public class GuestbookController {
 </th:block>
 ```
 - th:each를 이용해서 PageResultDTO안에 들어있는 dtoList를 반복 처리
-![image](https://user-images.githubusercontent.com/86938974/169181303-469cf147-6dec-4450-b8b6-2cbd17378f90.png)
+![image](https://user-images.githubusercontent.com/86938974/169181753-cc21a4e6-f1fe-47da-b910-80fbcce2c385.png)
+
 
  * 목록 페이지 처리
 - /guestbook/list 혹은 /guestbook/list?page=1의 경우 1페이지 출력
+- list.html 하단 페이지 처리
+```
+<ul class="pagination h-100 justify-content-center align-items-center">
+            <li class="page-item" th:if="${result.prev}">
+                <a class="page-link" th:href="@{/guestbook/list(page=${result.start - 1})}" tabindex="-1">Previous</a>
+            </li>
+
+            <li th:class=" 'page-item' + ${result.page==page?'active':''}" th:each="page : ${result.pageList}">
+                <a class="page-link" th:href="@{/guestbook/list(page=${page})}">[[${page}]]</a>
+            </li>
+
+            <li class="page-item" th:if="${result.next}">
+                <a class="page-link" th:href="@{/guestbook/list(page=${result.end+1})}">Next</a>
+            </li>
+        </ul>
+```
+- 1페이지
+![image](https://user-images.githubusercontent.com/86938974/169187667-4ccfb35f-28ab-4014-8b39-d6d3d9931349.png)
+- Next 클릭(맨 뒤)
+![image](https://user-images.githubusercontent.com/86938974/169187752-a750a1c7-85db-4ef5-b476-22a445ef856f.png)
+- Previous 클릭
+![image](https://user-images.githubusercontent.com/86938974/169187764-b11e1c3b-b341-4058-9788-d7e2ab7cde45.png)
+
+* 등록 페이지와 등록 처리
+      * GuestbookController 클래스
+ ```
+ @GetMapping("/register")
+    public void register(){
+        log.info("register get....");
+    }
+
+    @PostMapping("/register")
+    public String registerPost(GuestbookDTO dto, RedirectAttributes redirectAttributes){
+        //insert 후 등록된 글번호 저장
+        Long gno = service.register(dto); // 폼에 입력된 값이 dto에 자동 수집됨
+        // msg라는 이름으로 뷰에 전달
+        redirectAttributes.addFlashAttribute("msg", gno);
+        return "redirect:/guestbook/list"; //목록으로 이동
+    }
+ ```
+- Spring에서는 View에 입력한 값이 Controller에 전달되면 dto에 자동수집된다.
+
+       * register.html 생성
+ ```
+ <!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content})}">
+    <th:block th:fragment="content">
+        <h1 class="mt-4">GuestBook Register Page</h1>
+
+        <form th:action="@{/guestbook/register}" th:method="post">
+            <div class="form-group">
+                <label>Title</label>
+                <input type = "text" class="form-control" name="title" placeholder="Enter Title">
+            </div>
+            <div class="form-group">
+                <label>Content</label>
+                <textarea class="form-control" rows="5" name="content"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Writer</label>
+                <input type="text" class="form-control" name="writer" placeholder="Enter Writer">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </th:block>
+</th:block>
+ ```
+- 글쓰기 화면
+ ![image](https://user-images.githubusercontent.com/86938974/169192990-59883edb-20c8-4206-854b-dd4a128bdd05.png)
+- 글 작성
+![image](https://user-images.githubusercontent.com/86938974/169193767-e5f9da0c-1954-4f21-b068-f49114b4f8aa.png)
+- 최상단에 올라와 있는 글 확인
+![image](https://user-images.githubusercontent.com/86938974/169193810-222a58fd-a45e-44f6-ad9b-88e373391ad3.png)
+
+* 등록 처리와 목록 페이지의 모달창(부트스트랩 사용)
+- list.html에 추가
+```
+<h1>GuestBook List Page
+            <span>
+<!--                <a th:href="@{/guestbook/register}">-->
+<!--                    <button type="button" class="btn btn-outline-secondary">등록하기</button>-->
+<!--                </a>-->
+                <a href="/guestbook/register" class="btn btn-outline-secondary">등록하기</a>
+            </span>
+        </h1>
+ <!-- 모달창 --------------------------------->
+        <div class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                        <h5 class="modal-title">알림</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <!-- Modal body -->
+                    <div class="modal-body">
+                        <p>처리가 완료되었습니다.</p>
+                    </div>
+
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            var msg = [[${msg}]];
+            console.log(msg);
+
+            if(msg){
+                $(".modal").modal()
+            }
+        </script>
+        <!-- 모달창 종료-->
+```
+ - 화면
+![image](https://user-images.githubusercontent.com/86938974/169197015-918e4fa1-9e22-4b95-a31d-b6c7cec1e2e4.png)
+- 등록하기 클릭시 이동
+![image](https://user-images.githubusercontent.com/86938974/169197044-f6a0160c-d06a-4192-8488-4775cc6c0104.png)
 
