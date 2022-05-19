@@ -1051,4 +1051,98 @@ public class GuestbookController {
 ![image](https://user-images.githubusercontent.com/86938974/169197015-918e4fa1-9e22-4b95-a31d-b6c7cec1e2e4.png)
 - 등록하기 클릭시 이동
 ![image](https://user-images.githubusercontent.com/86938974/169197044-f6a0160c-d06a-4192-8488-4775cc6c0104.png)
+- 작성
+![image](https://user-images.githubusercontent.com/86938974/169203783-042cb01e-68cc-4396-8e09-64b47a9543c3.png)
+- 모달창 확인
+![image](https://user-images.githubusercontent.com/86938974/169203834-813be26e-ff0e-410c-ada8-8dbfd67b1bac.png)
 
+ * 등록 페이지의 링크와 조회 페이지 링크 처리
+ - list.html 수정하여 각 글의 번호에 링크 처리
+```
+ <tr th:each = "dto : ${result.dtoList}">
+                <th scope="row">
+                    <a th:href="@{/guestbook/read(gno=${dto.gno}, page=${result.page})}">
+                        [[${dto.gno}]]
+                    </a>
+                </th>
+```
+![image](https://user-images.githubusercontent.com/86938974/169206299-e977291b-565b-4d11-bc57-3945a4c64585.png)
+  
+ * 방명록 조회 처리
+- GuestbookService 인터페이스 추가
+```
+GuestbookDTO read(Long gno);
+```
+  
+- GuestbookServiceImpl 클래스
+```
+@Override
+    public GuestbookDTO read(Long gno) {
+        Optional<Guestbook> result = repository.findById(gno);
+        return result.isPresent()? entityToDto(result.get()):null;
+    }
+```
+- GuestbookController 클래스 추가
+```
+ @GetMapping("/read")
+    public void read(long gno, @ModelAttribute("requestDTO") PageRequestDTO requestDTO, Model model){
+        log.info("gno:"+gno);
+        GuestbookDTO dto = service.read(gno);
+        model.addAttribute("dto",dto);
+    }
+```
+- 조회화면 작성 (read.html 생성)
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<th:block block th:replace="~{/layout/basic :: setContent(~{this::content})}">
+
+    <th:block th:fragment="content">
+
+        <h1 class="mt-4">GuestBook Read Page</h1>
+
+        <div class="form-group">
+            <label>Gno</label>
+            <input type="text" class="form-control" name="gno" th:value="${dto.gno}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" class="form-control" name="title" th:value="${dto.title}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>Content</label>
+            <textarea class="form-control" rows="5" name="content" readonly>[[${dto.content}]]</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Writer</label>
+            <input type="text" class="form-control" name="writer" th:value="${dto.writer}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>RegDate</label>
+            <input type="text" class="form-control" name="regDate"
+                   th:value="${#temporals.format(dto.regDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>ModDate</label>
+            <input type="text" class="form-control" name="modDate"
+                   th:value="${#temporals.format(dto.modDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+        </div>
+
+        <a th:href="@{/guestbook/modify(gno=${dto.gno},page=${requestDTO.page})}">
+            <button type="button" class="btn btn-primary">Modify</button>
+        </a>
+        <a th:href="@{/guestbook/list(page=${requestDTO.page})}">
+            <button type="button" class="btn btn-info">List</button>
+        </a>
+    </th:block>
+
+</th:block>
+```
+- 화면
+![image](https://user-images.githubusercontent.com/86938974/169213978-b8ef5f18-4798-48a1-94c9-00eafb0c54c0.png)
