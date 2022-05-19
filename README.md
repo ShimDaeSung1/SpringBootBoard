@@ -870,7 +870,56 @@ public class PageResultDTO<DTO, EN> {
 }
  
 ```
- 
+ * 컨트롤러와 화면에서의 목록 처리
+- GuestbookController에 추가 
+```
+@RequiredArgsConstructor
+public class GuestbookController {
+ private final GuestbookService service;
+ @GetMapping("/list")
+    public void list(PageRequestDTO pageRequestDTO, Model model){
+        log.info("list..........."+pageRequestDTO);
+        model.addAttribute("result", service.getList(pageRequestDTO));
+    }
+}
+```
+- 스프링 MVC는 파라미터를 자동으로 수집해주는 기능이 있으므로, 화면에서 page와 size라는 파라미터를 전달하면 PageRequestDTO객체로 자동으로 수집된다. 
 
+- list.html 목록 출력
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th = "http://www.thymeleaf.org">
 
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content})}">
+
+    <th:block th:fragment="content">
+
+        <h1>GuestBook List Page</h1>
+
+        <table class = "table table-striped">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Gno</th>
+                <th scope="col">Title</th>
+                <th scope="col">Regdate</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each = "dto : ${result.dtoList}">
+                <th scope="row">[[${dto.gno}]]</th>
+                <td>[[${dto.title}]]</td>
+                <td>[[${dto.writer}]]</td>
+                <td>[[${#temporals.format(dto.regDate, 'yyyy/MM/dd')}]]</td>
+            </tr>
+            </tbody>
+        </table>
+    </th:block>
+</th:block>
+```
+- th:each를 이용해서 PageResultDTO안에 들어있는 dtoList를 반복 처리
+![image](https://user-images.githubusercontent.com/86938974/169181303-469cf147-6dec-4450-b8b6-2cbd17378f90.png)
+
+ * 목록 페이지 처리
+- /guestbook/list 혹은 /guestbook/list?page=1의 경우 1페이지 출력
 
