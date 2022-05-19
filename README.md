@@ -1146,3 +1146,64 @@ GuestbookDTO read(Long gno);
 ```
 - 화면
 ![image](https://user-images.githubusercontent.com/86938974/169213978-b8ef5f18-4798-48a1-94c9-00eafb0c54c0.png)
+ 
+* 방명록의 수정/삭제 처리
+- GuestbookController에 추가
+```
+@GetMapping({"/read","/modify"})
+```
+- 수정 화면(Modify.html) 생성
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<th:block block th:replace="~{/layout/basic :: setContent(~{this::content})}">
+
+    <th:block th:fragment="content">
+
+        <h1 class="mt-4">GuestBook Modify Page</h1>
+
+        <form action="/guestbook/modify" method="post">
+            <div class="form-group">
+                <label>Gno</label>
+                <input type="text" class="form-control" name="gno" th:value="${dto.gno}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" class="form-control" name="title" th:value="${dto.title}">
+            </div>
+
+            <div class="form-group">
+                <label>Content</label>
+                <textarea class="form-control" rows="5" name="content" >[[${dto.content}]]</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Writer</label>
+                <input type="text" class="form-control" name="writer" th:value="${dto.writer}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>RegDate</label>
+                <input type="text" class="form-control" name="regDate"
+                       th:value="${#temporals.format(dto.regDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>ModDate</label>
+                <input type="text" class="form-control" name="modDate"
+                       th:value="${#temporals.format(dto.modDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+            </div>
+        </form>
+
+        <button type="button" class="btn btn-primary">Modify</button>
+        <button type="button" class="btn btn-info">List</button>
+        <button type="button" class="btn btn-danger">Remove</button>
+
+    </th:block>
+
+</th:block>
+```
+- 수정 화면
+![image](https://user-images.githubusercontent.com/86938974/169219194-c367d5fe-a717-465c-ba7e-0372fcd6fccd.png)
