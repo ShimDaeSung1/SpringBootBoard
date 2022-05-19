@@ -1207,3 +1207,72 @@ GuestbookDTO read(Long gno);
 ```
 - 수정 화면
 ![image](https://user-images.githubusercontent.com/86938974/169219194-c367d5fe-a717-465c-ba7e-0372fcd6fccd.png)
+
+ * 서비스 계층에서의 수정 삭제
+- GuestbookService 인터페이스 코드 추가
+```
+void remove(Long gno);
+void modify(GuestbookDTO dto);
+```
+ 
+- GuestbookServiceImpl 클래스 오버라이드
+```
+ @Override
+    public void remove(Long gno) {
+        repository.deleteById(gno);
+    }
+
+    @Override
+    public void modify(GuestbookDTO dto) {
+        //업데이트 하는 항목은 '제목', '내용'
+        Optional<Guestbook> result = repository.findById(dto.getGno());
+
+        if (result.isPresent()){
+            Guestbook entity = result.get();
+            
+            entity.changeTitle(dto.getTitle());
+            entity.changeContent(dto.getContent());
+            
+            repository.save(entity);
+
+        }
+    }
+```
+- GuestbookController의 게시물 삭제
+```
+@PostMapping("/remove")
+    public String remove(long gno, RedirectAttributes redirectAttributes){
+        log.info("gno:"+gno);
+        service.remove(gno);
+        redirectAttributes.addFlashAttribute("msg",gno);
+        return "redirect:/guestbook/list";
+    }
+```
+- modify.html 삭제처리
+```
+<button type="button" class="btn btn-primary modifyBtn">Modify</button>
+        <button type="button" class="btn btn-info">List</button>
+        <button type="button" class="btn btn-danger removeBtn">Remove</button>
+        
+        <script th:inline="javascript">
+            
+            var actionForm = $("form"); //form태그 객체
+            
+            $(".removeBtn").click(function(){
+                actionForm
+                    .attr("action", "/guestbook/remove")
+                    .attr("method", "post");
+                
+                actionForm.submit();
+            });
+        </script>
+```
+- Remove버튼 클릭시 <form>태그의 action 속성과 method 속성을 조정한다. 
+![image](https://user-images.githubusercontent.com/86938974/169223798-29ee51cf-6a06-4f99-b591-86c1f3619ccd.png)
+- 삭제와 동시에 이동
+![image](https://user-images.githubusercontent.com/86938974/169223839-f8bf3729-61fc-4044-a98d-b43739b14c8b.png)
+- DB에서 없어진 것 확인
+![image](https://user-images.githubusercontent.com/86938974/169223891-84ff519e-cb07-4bb6-8f55-210f7ccfe380.png)
+
+
+ 
