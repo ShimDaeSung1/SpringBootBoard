@@ -1435,4 +1435,68 @@ var searchForm = $("#searchForm");
 ![image](https://user-images.githubusercontent.com/86938974/169440982-d8483ebc-dbf2-4278-ac14-0edde83864fe.png)
  
 - 페이지 번호의 검색 조건 추가
+- 목록페이지 하단의 검색은 page라는 값만을 처리하므로, 검색 타입(type)과 키워드(keyword) 추가
+- list.html
+```
+<ul class="pagination h-100 justify-content-center align-items-center">
+            <li class="page-item" th:if="${result.prev}">
+                <a class="page-link" th:href="@{/guestbook/list(page=${result.start - 1}, type=${pageRequestDTO.type},
+                 keyword = ${pageRequestDTO.keyword})}" tabindex="-1">Previous</a>
+            </li>
 
+            <li th:class=" 'page-item ' + ${result.page == page?'active':''} " th:each="page: ${result.pageList}">
+                <a class="page-link" th:href="@{/guestbook/list(page = ${page},
+                 type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">[[${page}]]</a>
+            </li>
+
+            <li class="page-item" th:if="${result.next}">
+                <a class="page-link" th:href="@{/guestbook/list(page=${result.end+1},
+                type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">Next</a>
+            </li>
+        </ul>
+```
+- 글 목록을 클릭해서 이동하는 부분에도 페이지 처리와 동일하게 type, keyword 값 전달
+```
+ <tr th:each = "dto : ${result.dtoList}">
+                <th scope="row">
+                    <a th:href="@{/guestbook/read(gno=${dto.gno}, page=${result.page},
+                     type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">
+                        [[${dto.gno}]]
+                    </a>
+                </th>
+ 
+  .
+  .
+  .
+```
+* 수정 작업 후 이동 처리
+- 수정은 다시 조회 페이지로 이동하기 때문에 검색 조건을 같이 유지해준다. 
+```
+<input type="hidden" name="type" th:value="${requestDTO.type}">
+<input type="hidden" name="keyword" th:value="${requestDTO.keyword}">
+
+$(".listBtn").click(function(){
+                // var pageInfo = $("input[name='page']");
+
+                var page=$("input[name='page']");
+                var type=$("input[name='type']");
+                var keyword=$("input[name='keyword']");
+                                    
+                actionForm.empty(); // form태그의 모든 내용을 지우고
+                actionForm.append(page); 
+                actionForm.append(type); 
+                actionForm.append(keyword); 
+                actionForm
+                    .attr("action", "/guestbook/list")
+                    .attr("method","get");
+                actionForm.submit();
+            });
+
+```
+- GuestbookController 추가
+```
+    @PostMapping("/modify")
+  ...생략
+        redirectAttributes.addAttribute("type",requestDTO.getType());
+        redirectAttributes.addAttribute("keyword",requestDTO.getKeyword());
+```
