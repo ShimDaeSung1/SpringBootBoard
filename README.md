@@ -1274,5 +1274,165 @@ void modify(GuestbookDTO dto);
 - DB에서 없어진 것 확인
 ![image](https://user-images.githubusercontent.com/86938974/169223891-84ff519e-cb07-4bb6-8f55-210f7ccfe380.png)
 
+- page값도 <form>태그에 추가해서 전달
+```
+ <input type="hidden" name="page" th:value="${#requestDTO.page}">
+```
 
+- GuestbookController에 PostMapping추가
+```
+@PostMapping("/modify")
+    public String modify(GuestbookDTO dto, @ModelAttribute("requestDTO") PageRequestDTO requestDTO,
+                         RedirectAttributes redirectAttributes){
+
+        service.modify(dto);
+
+        redirectAttributes.addFlashAttribute("page", requestDTO.getPage());
+        redirectAttributes.addFlashAttribute("gno",dto.getGno());
+
+        return "redirect:/guestbook/read";
+
+
+    }
+
+```
+- 수정 화면에서의 이벤트 처리(modify.html) jquery 사용
+```
+ $(".modifyBtn").click(function(){
+                if(!confirm("수정하시겠습니까?")){
+                    return;
+                }
+                actionForm
+                    .attr("action","/guestbook/modify")
+                    .attr("method", "post")
+                    .submit();
+            });
+```
+![image](https://user-images.githubusercontent.com/86938974/169428188-58836715-2bc4-4a19-896a-943bdbe03673.png)
+
+ - 수정 화면에서 다시 목록 페이지
+```
+$(".listBtn").click(function(){
+                var pageInfo = $("input[name='page']");
+                
+                actionForm.empty(); // form태그의 모든 내용을 지우고
+                actionForm.append(pageInfo); //목록 페이지 이동에 필요한 내용 추가
+                actionForm
+                    .attr("action", "/guestbook/list")
+                    .attr("method","get");
+                actionForm.submit();
+            });
+```
+ * 검색 처리
+- 제목, 내용, 작성자로 검색
+- 제목 혹은 내용으로 검색
+- 제목 혹은 내용 혹은 작성자로 검색
+
+       * 서버측 검색 처리
+- PageRequestDTO 클래스 
+- 검색조건(type)과 검색 키워드(keyword)를 추가
+```
+private String type;
+private String keyword;
+```
+      * 서비스 계층의 검색
+- GuestbookServiceImpl 클래스
+- 동적으로 검색 조건이 처리되는 경우의 실제 코딩은 Querydsl을 통해서 BooleanBuilder를 작성한다.
+```
+private BooleanBuilder getSearch(PageRequestDTO requestDTO){
+        //Querydsl 처리
+        String type = requestDTO.getType();
+        BooleanBuilder booleanBuilder = new BooleanBuilder();
+        QGuestbook qGuestbook = QGuestbook.guestbook;
+        String keyword = requestDTO.getKeyword();
+        //gno>0 조건만 생성
+        BooleanExpression expression = qGuestbook.gno.gt(0L);
+        booleanBuilder.and(expression);
+
+        if(type==null || type.trim().length() == 0){
+            // 검색 조건이 없는 경우
+            return booleanBuilder;
+        }
+
+        //검색 조건을 작성하기
+        BooleanBuilder conditionBuilder = new BooleanBuilder();
+        
+        if (type.contains("t")){
+            conditionBuilder.or(qGuestbook.title.contains(keyword));
+        }
+        if (type.contains("c")){
+            conditionBuilder.or(qGuestbook.content.contains(keyword));
+        }
+        if (type.contains("w")){
+            conditionBuilder.or(qGuestbook.writer.contains(keyword));
+        }
+        // 모든 조건 통합
+        booleanBuilder.and(conditionBuilder);
+        return booleanBuilder;
+    }
+```
+- GuestbookServiceImpl에 작성한 getSearch()는 PageRequestDTO 파라미터를 받아 검색 조건이 있는 경우에는 conditionBuilder 변수를 생성해서 각 검색 조건을 'or'로 연결하여 처리한다. 검색 조건이 없다면 'gno > 0'으로만 생성된다.
+
+- getList() 코드 수정
+```
+@Override
+    public PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO requestDTO) {
+        Pageable pageable = requestDTO.getPageable(Sort.by("gno").descending());
+
+        BooleanBuilder booleanBuilder = getSearch(requestDTO);
+
+        //Querydsl 사용
+        Page<Guestbook> result = repository.findAll(booleanBuilder,pageable);
+
+        //PageResultDTO생성자의 map()함수에서
+        Function<Guestbook, GuestbookDTO> fn = (entity -> entityToDto(entity));
+
+        return new PageResultDTO<>(result, fn);
+    }
+```
+ - /guestbook/list?page=1&type=t&keyword=11 검색으로 확인
+![image](https://user-images.githubusercontent.com/86938974/169435434-2cc73c48-f77c-43ed-833f-27b075e0a6e6.png)
+
+- list.html에 검색 타입과 키워드 입력하고 검색 버튼 추가
+```
+<form action="/guestbook/list" method="get" id="searchForm">
+            <div class="input-group">
+                <input type="hidden" name="page" value="1">
+                <div class="input-group-prepend">
+                    <select class="custom-select" name="type">
+                        <option th:selected="${pageRequestDTO.type == null}">-------</option>
+                        <option value ="t" th:selected="${pageRequestDTO.type == 't'}">제목</option>
+                        <option value="c" th:selected="${pageRequestDTO.type=='c'}">내용</option>
+                        <option value="w" th:selected="${pageRequestDTO.type == 'w'}">작성자</option>
+                        <option value="tc" th:selected="${pageRequestDTO.type =='tc'}">제목 + 내용</option>
+                        <option value="tcw" th:selected="${pageRequestDTO.type == 'tcw'}">제목 + 내용 + 작성자</option>
+                    </select>
+                </div>
+                <input class="form-control" name="keyword" th:value="${pageRequestDTO.keyword}">
+                <div class="input-group-append" id="button-addon4">
+                    <button class="btn btn-outline-secondary btn-search" type="button">Search</button>
+                    <button class="btn btn-outline-secondary btn-clear" type="button">Clear</button>
+                </div>
+            </div>
+        </form>
+```
+![image](https://user-images.githubusercontent.com/86938974/169438868-666c9064-cef1-4002-ba08-ce7894a2cce6.png)
+- hidden 태그로 처리된 page값은 1로, Search 버튼을 누르는 것은 새롭게 검색을 진행하는 것이므로 무조겐 1페이지를 지정한다.
+- Clear 버튼 클릭시 모든 검색 조건 없이 새로 목록 페이지를 본다.
+
+- list.html 이벤트 처리
+```
+var searchForm = $("#searchForm");
+           $('.btn-search').click(function(e){
+               searchForm.submit()
+           });
+           $('.btn-clear').click(function(e){
+               searchForm.empty().submit();
+           });
+```
+![image](https://user-images.githubusercontent.com/86938974/169440803-8e9e74b0-ede5-424e-aa06-06498f43e709.png)
+- Clear버튼 클릭시
+![image](https://user-images.githubusercontent.com/86938974/169440982-d8483ebc-dbf2-4278-ac14-0edde83864fe.png)
  
+- 페이지 번호의 검색 조건 추가
+
