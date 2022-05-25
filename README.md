@@ -1,12 +1,16 @@
 # SpringBootBoard
 
-* 프로젝트 기본 구조
-  * 브라우저에서 들어오는 Request는 GuestbookController라는 객체로 처리
-  * GuestbookRepository는 Spring Data JPA를 이용해서 구성, GuestbookServicempl클래스에 주입
-  * 마지막 결과는 Thymeleaf를 이용해서 레이아웃 템플릿 활용 처리
-  * 브라우저에서 전달되는 Request는 GuestbookController에서 DTO 형태로 처리
-  * GuestbookRepository는 엔티티 타입을 이용하므로 중간에 Service 계층에서는 DTO와 엔티티 변환 처리
-
+* 기능 방명록 조회/수정/삭제, 페이징 처리
+  * 방명록 조회/수정/삭제
+  * 페이징 처리
+  * 댓글 수정/삭제 기능
+  
+* 연관관계와 관계형 데이터베이스 설계
+ * 한 명의 회원은 여러 개의 게시글을 작성할 수 있다.
+ * 하나의 게시글은 한 명의 작성자만을 표시한다.
+ * 하나의 게시글은 여러 개의 댓글을 가질 수 있다.
+ * 하나의 댓글은 하나의 게시글에 속한다. 
+![erd](https://user-images.githubusercontent.com/86938974/170183988-5b76079e-1e49-4857-8faa-e0fa6fc4af87.png)
 
   * MariaDB Java Client 다운로드 - MVNrepository.com 접속 - 2.7.1 Gradle 태그 복사
 ![image](https://user-images.githubusercontent.com/86938974/168707594-97eedceb-ec83-4051-b7de-02bd966d8705.png)
@@ -62,180 +66,15 @@ dependencies {
     implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.7.1'
     // https://mvnrepository.com/artifact/org.thymeleaf.extras/thymeleaf-extras-java8time
     implementation group: 'org.thymeleaf.extras', name: 'thymeleaf-extras-java8time', version: '3.0.4.RELEASE'
-
-}
-```
-
-* 컨트롤러/화면 관련 준비
-![image](https://user-images.githubusercontent.com/86938974/168710851-0e5806f8-1566-40ca-b23f-4749145b570e.png)
-
-  * thymeleaf 파일이 들어감 -> templates
-![image](https://user-images.githubusercontent.com/86938974/168711040-803a108b-c495-41b1-b983-661c9c007e3f.png)
-
-![image](https://user-images.githubusercontent.com/86938974/168712646-f9e5ccae-0311-4594-909f-a07927fcb228.png)
-
-  * GuestbookController.java
-```
-package org.zerock.guestbook.controller;
-
-import lombok.extern.log4j.Log4j2;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-
-@Controller
-@RequestMapping("/guestbook")
-@Log4j2
-public class GuestbookController {
-    //목록
-    @GetMapping({"/", "/list"})
-    public String list(){
-        // void라고 쓰면 GetMapping 주소와 같은 html을 찾아서 가지만,
-        // 없으므로 다른 파일명일때 그 곳으로 가기위해 사용하는 문법
-        return "/guestbook/list";
-    }
+    // https://mvnrepository.com/artifact/com.querydsl/querydsl-jpa
+    implementation group: 'com.querydsl', name: 'querydsl-jpa', version: '5.0.0'
+    // https://mvnrepository.com/artifact/com.querydsl/querydsl-apt
+    implementation group: 'com.querydsl', name: 'querydsl-apt', version: '5.0.0'
 }
 
 ```
-  * guestbook -> list.html 생성
-```
-<!DOCTYPE html>
-<html lang="en" xmlns:th = "http://www.thymeleaf.org">
 
-<th:block th:replace="~{layout/basic :: setContent(~{this::content})}">
-    
-    <th:block th:fragment="content">
-        
-        <h1>GuestBook List Page</h1>    
-        
-    </th:block>
-    
-</th:block>
-```
-
-  * layout/basic.html 코드
-```
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<th:block th:fragment="setContent(content)"></th:block>
-<head>
-
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="">
-  <meta name="author" content="">
-
-  <title>Simple Sidebar - Start Bootstrap Template</title>
-
-  <!-- Bootstrap core CSS -->
-  <link th:href="@{vendor/bootstrap/css/bootstrap.min.css}" rel="stylesheet">
-
-  <!-- Custom styles for this template -->
-  <link th:href="@{/css/simple-sidebar.css}" rel="stylesheet">
-
-</head>
-
-<body>
-
-<div class="d-flex" id="wrapper">
-
-  <!-- Sidebar -->
-  <div class="bg-light border-right" id="sidebar-wrapper">
-    <div class="sidebar-heading">Start Bootstrap </div>
-    <div class="list-group list-group-flush">
-      <a href="#" class="list-group-item list-group-item-action bg-light">Dashboard</a>
-      <a href="#" class="list-group-item list-group-item-action bg-light">Shortcuts</a>
-      <a href="#" class="list-group-item list-group-item-action bg-light">Overview</a>
-      <a href="#" class="list-group-item list-group-item-action bg-light">Events</a>
-      <a href="#" class="list-group-item list-group-item-action bg-light">Profile</a>
-      <a href="#" class="list-group-item list-group-item-action bg-light">Status</a>
-    </div>
-  </div>
-  <!-- /#sidebar-wrapper -->
-
-  <!-- Page Content -->
-  <div id="page-content-wrapper">
-
-    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-      <button class="btn btn-primary" id="menu-toggle">Toggle Menu</button>
-
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
-          <li class="nav-item active">
-            <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#">Link</a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-              Dropdown
-            </a>
-            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-              <a class="dropdown-item" href="#">Action</a>
-              <a class="dropdown-item" href="#">Another action</a>
-              <div class="dropdown-divider"></div>
-              <a class="dropdown-item" href="#">Something else here</a>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </nav>
-
-    <div class="container-fluid">
-      <th:block th:replace = "${content}"></th:block>
-    </div>
-  </div>
-  <!-- /#page-content-wrapper -->
-
-</div>
-<!-- /#wrapper -->
-
-<!-- Bootstrap core JavaScript -->
-<script th:src="@{/vendor/jquery/jquery.min.js}"></script>
-<script th:src="@{/vendor/bootstrap/js/bootstrap.bundle.min.js}"></script>
-
-<!-- Menu Toggle Script -->
-<script>
-  $("#menu-toggle").click(function(e) {
-    e.preventDefault();
-    $("#wrapper").toggleClass("toggled");
-  });
-</script>
-
-</body>
-
-</html>
-
-```
-
-  * GuestbookApplication
-```
-@SpringBootApplication
-@EnableJpaAuditing
-public class GuestbookApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(GuestbookApplication.class, args);
-    }
-
-}
-```
-- 첫 화면
-![image](https://user-images.githubusercontent.com/86938974/168716907-f42b5310-7b19-4df7-90a7-b6c3d767635e.png)
-
-![image](https://user-images.githubusercontent.com/86938974/168716835-2bd70dcf-0159-4451-888c-b44902629d61.png)
-
-  * 자동으로 처리되는 날짜/시간 설정
-- 시간 처리를 위한 BaseEntity 클래스
-- 엔티티 객체의 등록 시간과 최종 수정 시간 담당
-
-![image](https://user-images.githubusercontent.com/86938974/168718748-5c2dacbd-0fd7-4041-afff-ef800842d30d.png)
-
+* BaseEntity 클래스
 ```
 package org.zerock.guestbook.entity;
 
@@ -264,1138 +103,719 @@ abstract class BaseEntity {
 
 }
 
+```
+
+* @ManyToOne 어노테이션
+
+      * Board의 writer는 Member테이블을 참조한다.
 
 ```
-- @MappedSuperClass는 테이블로 생성되지 않는다.
-- 실제 테이블은 BaseEntity 클래스를 상속한 엔티티의 클래스로 데이터베이스 테이블이 생성된다.
-- JPA내부에서 엔티티 객체가 생성/변경되는 것을 감지하는 역할은 AuditingEntityListener로 이루어진다. 이를 통해서 regDate, modDate에 적절한 값이 지정된다.
-- @CreateDate는 JPA에서 엔티티의 생성 시간을 처리하고 @LastModifiedDate는 최종 수정 시간을 자동으로 처리한다.
-
-- JPA를 이용하면서 AuditingEntityListener를 활성화시키기 위해서는 프로젝트에 @EnableJpaAuditing 설정 추가
+@ManyToOne(fetch = FetchType.LAZY)
+    private Member writer; //연관관계 지정, FK 생성
 ```
-@SpringBootApplication
-@EnableJpaAuditing
-public class GuestbookApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(GuestbookApplication.class, args);
+      * Reply의 board는 Board테이블 참조
+```
+@ManyToOne
+    private Board board;
+```
+- 두 개 이상의 엔티티 간의 연관관계를 맺고 나면 쿼리를 실행하는 데이터베이스 입장에서는 엔티티 클래스들이 실제 데이터베이스상에서는 두 개 혹은 두 개 이상의 테이블로 생성되기 때문에 조인이 필요하다고 여긴다. @ManyToOne의 경우에는 FK쪽의 엔티티를 가져올 때, PK 쪽의 엔티티도 같이 가져온다.
+- 특정한 엔티티를 조회할 때 연관관계를 가진 모든 엔티티를 같이 로딩하는 것을 'Eager loading' 이라고 한다. 한 번에 연관된 모든 엔티티를 가져온다는 장점이 있지만, 여러 연관관계를 맺고 있거나 연관관계가 복잡할수록 조인으로 인한 성능 저하를 피할 수 없다.
+
+
+* Repository 인터페이스 추가 
+      * MemberRepository, BoardRepository, ReplyRepository
+      * MemberRepositoryTests 테스트 코드를 통해 Member 테이블에 더미데이터 추가
+```
+package org.zerock.guestbook.repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.zerock.guestbook.entity.Member;
+import org.zerock.guestbook.respository.MemberRepository;
+
+
+import java.util.stream.IntStream;
+
+@SpringBootTest
+public class MemberRepositoryTests {
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Test
+    public void insertMembers(){
+        IntStream.rangeClosed(1, 100).forEach(i->{
+
+            Member member = Member.builder()
+                    .email("user"+i+"@aaa.com")
+                    .password("1111")
+                    .name("USER"+i)
+                    .build();
+
+            memberRepository.save(member);
+        });
     }
-
-}
-```
-
-  * 엔티티 클래스와 Querydsl 설정
-- Guestbook 클래스
-
-```
-package org.zerock.guestbook.entity;
-
-import lombok.*;
-
-import javax.persistence.*;
-
-@Entity
-@Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-@ToString
-public class GuestBook extends BaseEntity {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long gno;
-    
-    @Column(length = 100, nullable = false)
-    private String title;
-    
-    @Column(length = 1500, nullable = false)
-    private String content;
-    
-    @Column(length = 50, nullable = false)
-    private String writer;
 }
 
 ```
-- 생성 확인
-![image](https://user-images.githubusercontent.com/86938974/168720392-7b19a4f8-e749-4244-8746-8bf88c3a1e5f.png)
+ ![image](https://user-images.githubusercontent.com/86938974/170186052-e47bb1dd-6f1d-40af-af0d-c5ee5ec0cdb3.png)
 
-![image](https://user-images.githubusercontent.com/86938974/168720647-b100b65b-56e8-407a-a238-becfaeec5011.png)
+* JPQL과 Left(Outer) join
+      * Board 엔티티 클래스 내부에는 Member 엔티티 클래스를 변수로 선언하고, 연관관계를 맺으므로 Board의 writer 변수를 이용해서 조인을 처리한다.
+      * Board와 Reply테이블을 조인해서 특정 게시물과 해당 게시물에 속한 댓글들을 조회한다.
+      * BoardRepository 
 
-- GuestbookRepository 인터페이스 생성 (CRUD 담당)
 ```
 package org.zerock.guestbook.respository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.zerock.guestbook.entity.Guestbook;
-
-public interface GuestbookRepository extends JpaRepository<Guestbook, Long> {
-}
-
-```
-- https://mvnrepository.com/artifact/com.querydsl/querydsl-jpa 접속
-- Querydsl JPA Support 4.3.1 복사 -> build.gradle파일의 dependencies 안에 코드 추가
-![image](https://user-images.githubusercontent.com/86938974/168729990-2cf544ea-8f34-441d-924e-051186dc4c87.png)
-
-
-```
-plugins {
-    id 'org.springframework.boot' version '2.6.7'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
-    id 'java'
-    id 'war'
-    id 'com.ewerk.gradle.plugins.querydsl' version '1.0.10'
-}
-
-group = 'org.zerock'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
-
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    annotationProcessor 'org.projectlombok:lombok'
-    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    // https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
-    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.7.1'
-    // https://mvnrepository.com/artifact/org.thymeleaf.extras/thymeleaf-extras-java8time
-    implementation group: 'org.thymeleaf.extras', name: 'thymeleaf-extras-java8time', version: '3.0.4.RELEASE'
-    // https://mvnrepository.com/artifact/com.querydsl/querydsl-jpa
-    implementation group: 'com.querydsl', name: 'querydsl-jpa', version: '5.0.0'
-    // https://mvnrepository.com/artifact/com.querydsl/querydsl-apt
-    implementation group: 'com.querydsl', name: 'querydsl-apt', version: '5.0.0'
-
-
-
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
-def querydslDir = "$buildDir/generated/querydsl"
-
-querydsl {
-    jpa = true
-    querydslSourcesDir = querydslDir
-}
-
-sourceSets {
-    main.java.srcDir querydslDir
-}
-
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-    querydsl.extendsFrom compileClasspath
-}
-
-compileQuerydsl {
-    options.annotationProcessorPath = configurations.querydsl
-}
-
-```
-- 아래 폴더 자동 생성
-![image](https://user-images.githubusercontent.com/86938974/168734560-186b3deb-c4ea-4908-a8c9-7135c587e5a6.png)
-
-
- * 엔티티의 테스트
-
-- Guestbook에 다음 코드 추가
-```
-public void changeTitle(String title){
-        this.title = title;
-    }
-
-    public void changeContent(String content){
-        this.content = content;
-    }
-```
-
-- GuestbookRepositoryTests 생성
-![image](https://user-images.githubusercontent.com/86938974/168736191-f80d374e-47f2-402e-9e66-018bfb5cc77c.png)
-
-```
-package org.zerock.guestbook.repository;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.zerock.guestbook.entity.Guestbook;
-import org.zerock.guestbook.respository.GuestbookRepository;
-
-import java.util.Optional;
-import java.util.stream.IntStream;
-
-@SpringBootTest
-public class GuestbookRepositoryTests {
-
-    @Autowired
-    private GuestbookRepository guestbookRepository;
-
-    @Test
-    public void insertDummies(){
-
-        IntStream.rangeClosed(1, 300).forEach(i->{
-            Guestbook guestbook = Guestbook.builder()
-                    .title("Title..."+i)
-                    .content("Content..."+i)
-                    .writer("user"+(i%10))
-                    .build();
-            System.out.println(guestbookRepository.save(guestbook));
-        });
-    }
-
-    @Test
-    public void updateTest(){
-        Optional<Guestbook> result = guestbookRepository.findById(300L);
-
-        if(result.isPresent()){
-            Guestbook guestbook = result.get();
-            guestbook.changeTitle("Change Title....");
-            guestbook.changeContent("Change Content....");
-            guestbookRepository.save(guestbook);
-        }
-    }
-}
-
-```
-- 실행 결과
-![image](https://user-images.githubusercontent.com/86938974/168737190-740c12ff-dd0d-4b01-871b-54ee297670a2.png)
-- 변경 확인
-![image](https://user-images.githubusercontent.com/86938974/168738685-6e2c3063-8fd2-4033-a39c-22c48cc8057c.png)
-
- * Querydsl 테스트
-
-- /제목/내용/작성자 같이 단 하나의 항목 검색
-- '제목+내용'/'내용+작성자'/'제목+작성자'와 같이 2개의 항목 검색
-- 제목+내용+작성자와 같이 3개의 항목 검색
-- 이런 상황을 대비해서 상황에 맞게 쿼리를 처리하는 Querydsl이 필요
-
-```
-package org.zerock.guestbook.repository;
-
-import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.zerock.guestbook.entity.Guestbook;
-import org.zerock.guestbook.entity.QGuestbook;
-import org.zerock.guestbook.respository.GuestbookRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.respository.search.SearchBoardRepository;
 
 
-import java.util.Optional;
-import java.util.stream.IntStream;
+import java.util.List;
 
-@SpringBootTest
-public class GuestbookRepositoryTests {
+public interface BoardRepository extends JpaRepository<Board, Long>, SearchBoardRepository {
+    @Query("select b, w from Board b left join b.writer w where b.bno =:bno")
+//    @Query(value = "select b.*, m.name " +
+//            " from board b left join member m" +
+//            " on b.writer_email=m.email " +
+//            " where b.bno =:bno",nativeQuery = true)
+    Object getBoardWithWriter(@Param("bno") Long bno);
 
-    @Autowired
-    private GuestbookRepository guestbookRepository;
+    @Query("SELECT b, r from Board b LEFT JOIN Reply r ON r.board = b where b.bno = :bno")
+//    @Query("SELECT b, r FROM Reply r LEFT JOIN r.board b WHERE b.bno = :bno")
+//    @Query(value = "SELECT b.bno, r.* " +
+//            " FROM Board b LEFT JOIN Reply r " +
+//            " ON r.board_bno = b.bno " +
+//            " WHERE b.bno = :bno",nativeQuery = true)
+    List<Object[]> getBoardWithReply(@Param("bno") Long bno);
 
-    @Test
-    public void insertDummies(){
+    @Query(value = "SELECT b, w, count(r)"+
+            " FROM Board b" +
+            " LEFT JOIN b.writer w"+
+            " LEFT JOIN Reply r ON r.board = b" +
+            " GROUP BY b",
+            countQuery = "SELECT count(b) FROM Board b"
+    )
+//    @Query(value ="SELECT b, w, count(r) " +
+//            " FROM Reply r " +
+//            " LEFT JOIN r.board b " +
+//            " LEFT JOIN b.writer w  " +
+//            " GROUP BY b",
+//            countQuery ="SELECT count(b) FROM Board b")
+//    @Query(value ="SELECT b.*, m.name, count(r.rno) " +
+//            " FROM board b  LEFT JOIN member m on b.writer_email=m.email" +
+//            " LEFT JOIN reply r ON r.board_bno = b.bno " +
+//            " GROUP BY b.bno",
+//            countQuery ="SELECT count(*) FROM Board b",nativeQuery = true)
+    Page<Object[]> getBoardWithReplyCount(Pageable pageable);
 
-        IntStream.rangeClosed(1, 300).forEach(i->{
-            Guestbook guestbook = Guestbook.builder()
-                    .title("Title..."+i)
-                    .content("Content..."+i)
-                    .writer("user"+(i%10))
-                    .build();
-            System.out.println(guestbookRepository.save(guestbook));
-        });
-    }
+    @Query("SELECT b, w, count(r)" +
+            " FROM Board b LEFT JOIN b.writer w "+
+            " LEFT OUTER JOIN Reply r ON r.board = b"+
+            " WHERE b.bno = :bno")
+    Object getBoardByBno(@Param("bno") Long bno);
 
-    @Test
-    public void updateTest(){
-        Optional<Guestbook> result = guestbookRepository.findById(300L);
 
-        if(result.isPresent()){
-            Guestbook guestbook = result.get();
-            guestbook.changeTitle("Change Title....");
-            guestbook.changeContent("Change Content....");
-            guestbookRepository.save(guestbook);
-        }
-    }
-    @Test
-    public void testQuery1(){
-        Pageable pageable = (Pageable) PageRequest.of(0, 10, Sort.by("gno").descending());
-
-        QGuestbook qGuestbook = QGuestbook.guestbook; //1
-        String keyword = "1";
-        BooleanBuilder builder = new BooleanBuilder(); // 2
-        BooleanExpression expression = qGuestbook.title.contains(keyword); 
-        builder.and(expression);
-        Page<Guestbook> result = guestbookRepository.findAll(builder, pageable);
-
-        result.stream().forEach(guestbook -> {
-            System.out.println(guestbook);
-        });
-    }
 }
-@Test
-    public void testQuery2(){
-        Pageable pageable = PageRequest.of(0, 10, Sort.by("gno").descending());
-        QGuestbook qGuestbook = QGuestbook.guestbook;
-        String keyword="1";
-        BooleanBuilder builder = new BooleanBuilder();
-        BooleanExpression exTitle = qGuestbook.title.contains(keyword);
-        BooleanExpression exContent = qGuestbook.content.contains(keyword);
-        BooleanExpression exAll = exTitle.or(exContent);
-        builder.and(exAll);
-        builder.and(qGuestbook.gno.gt(0L));
-        Page<Guestbook> result = guestbookRepository.findAll(builder, pageable);
-        
-        result.stream().forEach(guestbook -> {
-            System.out.println(guestbook);
-        });
-        
-    }
+
 ```
-- 이를 통해 페이지 처리와 동시에 검색 처리 가능
-![image](https://user-images.githubusercontent.com/86938974/168746082-2092d295-44e9-488f-a18b-468ee85fd04f.png)
-
- * DTO 생성
-- GuestbookDTO 클래스
-![image](https://user-images.githubusercontent.com/86938974/168934613-97c845f4-8f7f-4df0-bf83-3816989bb37a.png)
-
-
+* DTO 계층과 서비스 계층
+      * BoardDTO, BoardService, BoardServiceImpl 클래스 작성
 ```
 package org.zerock.guestbook.dto;
 
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Data
-public class GuestbookDTO {
-    
-    private Long gno;
+@ToString
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class BoardDTO {
+    private Long bno;
     private String title;
     private String content;
-    private String writer;
-    private LocalDateTime regDate, modDate;
-    
+    private String writerEmail; //작성자의 이메일(id)
+    private String writerName; //작성자의 이름
+    private LocalDateTime regDate;
+    private LocalDateTime modDate;
+    private int replyCount; // 해당 게시글의 댓글 수
 }
 
 ```
-- 서비스 계층에서는 GuestbookDTO를 이용해서 필요한 내용을 전달받고, 반환하도록 처리하는데 GuestbookService 인터페이스와 GuestbookServiceImpl 클래스를 작성한다.
-
- * 등록과 DTO를 엔티티로 변환
-
-- 서비스 계층에서는 파라미터를 DTO타입으로 받기 때문에 이를 JPA로 처리하기 위해서는 엔티티 타입의 객체로 변환해야하는 작업이 반드시 필요하다.
-
-- GuestbookService 인터페이스(service 패키지 생성)
-![image](https://user-images.githubusercontent.com/86938974/168937280-3f923afc-ce2f-4e80-b28f-f2b4ef997453.png)
 
 ```
 package org.zerock.guestbook.service;
 
-import org.zerock.guestbook.dto.GuestbookDTO;
-import org.zerock.guestbook.entity.Guestbook;
-
-public interface GuestbookService {
-    Long register(GuestbookDTO dto);
-
-    default Guestbook dtoToEntity(GuestbookDTO dto){
-        Guestbook entity = Guestbook.builder()
-                .gno(dto.getGno())
-                .title(dto.getTitle())
-                .content(dto.getContent())
-                .writer(dto.getWriter())
-                .build();
-        return entity;
-    }
-}
-
-```
-
-- GuestbookServiceImpl 클래스에는 스프링에서 빈으로 처리되도록 @Service 어노테이션 추가
-
-```
-package org.zerock.guestbook.service;
-
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
-import org.springframework.stereotype.Service;
-import org.zerock.guestbook.dto.GuestbookDTO;
-import org.zerock.guestbook.entity.Guestbook;
-import org.zerock.guestbook.respository.GuestbookRepository;
-
-
-@Service
-@Log4j2
-@RequiredArgsConstructor // final이나 @nonNull이 붙어있는 필드에 대해 생성자를 만들어줌
-public class GuestbookServiceImpl implements GuestbookService {
-
-    private final GuestbookRepository repository; // 반드시 final로 선언, @Autowired 생략 가능
-    
-    @Override
-    public Long register(GuestbookDTO dto){
-        
-        log.info("DTO-----------------------");
-        log.info(dto);
-        
-        Guestbook entity = dtoToEntity(dto);
-        
-        log.info(entity);
-        
-        repository.save(entity);
-        
-        return entity.getGno();
-    }
-}
-
-```
-- GuestbookServiceImpl 클래스는 JPA처리를 위해서 GuestbookRepository를 주입하고 클래스 선언 시에 @RequiredArgsConstructor를 이용해서 자동으로 주입한다.
-- register의 내부에서는 save()를 통해 저장하고, 저장된 후에 해당 엔티티가 가지는 gno값을 반환한다.
-- DTO객체는 Entity로 변환해서 사용하므로 dtoToEntity 메서드를 만들었다.
-
- * 목록 처리
-- PageRequestDTO 클래스
-```
-package org.zerock.guestbook.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-
-@Builder
-@AllArgsConstructor
-@Data
-public class PageRequestDTO {
-
-    private int page;
-    private int size;
-
-    public PageRequestDTO(){
-        this.page = 1;
-        this.size = 10;
-    }
-    public Pageable getPageable(Sort sort){
-        return PageRequest.of(page-1, size, sort);
-    }
-}
-```
-- PageRequestDTO는 화면에서 전달되는 page라는 파라미터와 size라는 파라미터를 수집하는 역할
-- JPA를 이용하는 경우에는 페이지 번호가 0부터 시작한다는 점을 감안해서 1페이지의 경우 0이 될 수 있도록 page-1을 하는 형태로 작성
-- 정렬은 나중에 다양한 상황에서 쓰기 위해 별도의 파라미터를 받는다.
- 
- * 페이지 결과 처리 DTO
-- Page<Entity>의 엔티티 객체들을 DTO객체로 변환해서 자료구조로 담는다.
- 
-- PageResultDTO 클래스
-
- ```
- package org.zerock.guestbook.dto;
-
-import lombok.Data;
-import org.springframework.data.domain.Page;
-
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-@Data
-public class PageResultDTO<DTO, EN> {
-
-    private List<DTO> dtoList;
-
-    public PageResultDTO(Page<EN> result, Function<EN, DTO> fn){
-        //목록생성. dtoList에 저장
-        //map()함수에서 사용할 함수를 fn으로 지정
-        dtoList = result.stream().map(fn).collect(Collectors.toList());
-        //map함수 사용법
-        //배열or컬렉션or페이지.stream().map(화살표함수).collect(Collectors.toList())
-        //스트림은 하나씩 꺼내줌, 즉 result(Page<Guestbook>)에서 하나씩 꺼내어 map(fn)의 fn람다식을 하나씩 실행한다.
-        
-   }
-}
-
- ```
- * 서비스 계층에서는 목록 처리
-- GuestbookService 인터페이스의 추상메소드 하나 추가
- ```
- PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO);
- 
- default GuestbookDTO entityToDto(Guestbook entity){
-        GuestbookDTO dto = GuestbookDTO.builder()
-                .gno(entity.getGno())
-                .title(entity.getTitle())
-                .content(entity.getContent())
-                .writer(entity.getWriter())
-                .regDate(entity.getRegDate())
-                .modDate(entity.getModDate())
-                .build();
-
-        return dto;
-    }
- ```
- - GuestbookServiceImpl에서 Override
- ```
- package org.zerock.guestbook.service;
-
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.zerock.guestbook.dto.GuestbookDTO;
+import org.zerock.guestbook.dto.BoardDTO;
 import org.zerock.guestbook.dto.PageRequestDTO;
 import org.zerock.guestbook.dto.PageResultDTO;
-import org.zerock.guestbook.entity.Guestbook;
-import org.zerock.guestbook.respository.GuestbookRepository;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.entity.Member;
+
+import static org.zerock.guestbook.entity.QMember.member;
+
+public interface BoardService {
+
+    Long register(BoardDTO dto);
+
+    PageResultDTO<BoardDTO, Object[]> getList(PageRequestDTO pageRequestDTO);
+
+    BoardDTO get(Long bno);
+
+    void modify(BoardDTO boardDTO);
+    void removeWithReplies(Long bno); //삭제 기능
+    default Board dtoToEntity(BoardDTO dto){
+
+        Member member = Member.builder().email(dto.getWriterEmail()).build();
+        Board board = Board.builder()
+                .bno(dto.getBno())
+                .title(dto.getTitle())
+                .content(dto.getContent())
+                .writer(member)
+                .build();
+        return board;
+    }
+
+    default BoardDTO entityToDTO(Board board , Member member, Long replyCount ){
+
+        BoardDTO boardDTO = BoardDTO.builder()
+                .bno(board.getBno())
+                .title(board.getTitle())
+                .content(board.getContent())
+                .regDate(board.getRegDate())
+                .modDate(board.getModDate())
+                .writerEmail(member.getEmail())
+                .writerName(member.getName())
+                .replyCount(replyCount.intValue()) // long으로 나오므로 int로 처리하도록
+                .build();
+        return boardDTO;
+    }
+}
+
+```
+
+```
+package org.zerock.guestbook.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.zerock.guestbook.dto.BoardDTO;
+import org.zerock.guestbook.dto.PageRequestDTO;
+import org.zerock.guestbook.dto.PageResultDTO;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.entity.Member;
+import org.zerock.guestbook.respository.BoardRepository;
+import org.zerock.guestbook.respository.ReplyRepository;
 
 import java.util.function.Function;
-
 
 @Service
-@Log4j2
-@RequiredArgsConstructor // final이나 @nonNull이 붙어있는 필드에 대해 생성자를 만들어줌
-public class GuestbookServiceImpl implements GuestbookService {
-
-    private final GuestbookRepository repository; // 반드시 final로 선언, @Autowired 생략 가능
-
-    @Override
-    public Long register(GuestbookDTO dto) {
-
-        log.info("DTO-----------------------");
-        log.info(dto);
-
-        Guestbook entity = dtoToEntity(dto);
-
-        log.info(entity);
-
-        repository.save(entity);
-
-        return entity.getGno(); // 글번호 리턴
-    }
-
-    @Override
-    public PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO requestDTO) {
-        Pageable pageable = requestDTO.getPageable(Sort.by("gno").descending());
-        Page<Guestbook> result = repository.findAll(pageable);
-        //PageResultDTO생성자의 map()함수에서
-        Function<Guestbook, GuestbookDTO> fn = (entity -> entityToDto(entity));
-
-        return new PageResultDTO<>(result, fn);
-    }
-}
-
- ```
-- 목록 데이터 페이지 처리 (PageResultDTO 클래스)
-```
- package org.zerock.guestbook.dto;
-
-import lombok.Data;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-@Data
-public class PageResultDTO<DTO, EN> {
-
-    private List<DTO> dtoList; //글목록을 저장하는 List
-    private int totalPage; //총 페이지수
-    private int page; //현재 페이지
-    private int size; //페이지당 보여지는 글 수
-    private int start; //1.......10에서 시작 번호
-    private int end; //1.......10 에서 끝 번호
-    private boolean prev; //이전블록 유무 여부
-    private boolean next; //다음블록 유무 여부
-    private List<Integer> pageList; //1.......10 번호 목록
-
-    public PageResultDTO(Page<EN> result, Function<EN, DTO> fn){
-        //목록생성. dtoList에 저장
-        //map()함수에서 사용할 함수를 fn으로 지정
-        dtoList = result.stream().map(fn).collect(Collectors.toList());
-        //map함수 사용법
-        //배열or컬렉션or페이지.stream().map(화살표함수).collect(Collectors.toList())
-        //스트림은 하나씩 꺼내줌, 즉 result(Page<Guestbook>)에서 하나씩 꺼내어 map(fn)의 fn람다식을 하나씩 실행한다.
-
-        totalPage = result.getTotalPages();
-        makePageList(result.getPageable());
-   }
-   //paging에 관련된 필드들의 값을 구해서 저장
-    private void makePageList(Pageable pageable){
-        this.page = pageable.getPageNumber() + 1; //페이지번호, 0부터 시작하므로 1을 추가
-        this.size = pageable.getPageSize(); // 페이지당 글 수
-
-        //temp and page
-        int tempEnd = (int)(Math.ceil(page/10.0))*10; // 1......10에서 10. 실제 페이지수가 tempEnd보다 작으면 실제 페이지수가 End
-        start = tempEnd-9; // 끝번호(10)에서 9를 빼면 처음 번호
-        prev = start>1; // 시작번호가 1보다 크면 최소 두번째 구간이므로 이전구간 존재
-        end = totalPage > tempEnd ? tempEnd:totalPage; //총페이지수가 현재구간의 tempEnd보다 작으면 총페이지수가 End가 됨
-        next = totalPage > tempEnd; // 총페이지수가 현재구간의 tempEnd보다 크면 다음 구간 존재
-
-        pageList = IntStream.rangeClosed(start, end).boxed().collect(Collectors.toList()); // 1....10까지의 수를 List에 저장
-    }
-}
- 
-```
- * 컨트롤러와 화면에서의 목록 처리
-- GuestbookController에 추가 
-```
 @RequiredArgsConstructor
-public class GuestbookController {
- private final GuestbookService service;
- @GetMapping("/list")
-    public void list(PageRequestDTO pageRequestDTO, Model model){
-        log.info("list..........."+pageRequestDTO);
-        model.addAttribute("result", service.getList(pageRequestDTO));
+@Log4j2
+public class BoardServiceImpl implements BoardService {
+
+    private final BoardRepository repository; // 자동 주입 final
+    private final ReplyRepository replyRepository;
+
+    @Override
+    public Long register(BoardDTO dto) {
+        log.info(dto);
+        Board board = dtoToEntity(dto);
+        repository.save(board);
+        return board.getBno();
     }
+
+    @Override
+    public PageResultDTO<BoardDTO, Object[]> getList(PageRequestDTO pageRequestDTO) {
+        log.info(pageRequestDTO);
+
+        Function<Object[], BoardDTO> fn = (en -> entityToDTO((Board)en[0], (Member)en[1], (Long)en[2]));
+
+//        Page<Object[]> result = repository.getBoardWithReplyCount(
+//                pageRequestDTO.getPageable(Sort.by("bno").descending()));
+        Page<Object[]> result = repository.searchPage(
+                pageRequestDTO.getType(),
+                pageRequestDTO.getKeyword(),
+                pageRequestDTO.getPageable(Sort.by("bno").descending())
+        );
+        return new PageResultDTO<>(result, fn);
+
+
+    }
+
+    @Override
+    public BoardDTO get(Long bno) {
+        Object result = repository.getBoardByBno(bno);
+        Object[] arr = (Object[])result;
+        return entityToDTO((Board)arr[0], (Member)arr[1], (Long)arr[2]);
+    }
+
+    @Override
+    public void modify(BoardDTO boardDTO) {
+
+        Board board = repository.getOne(boardDTO.getBno());
+
+            board.changeTitle(boardDTO.getTitle());
+            board.changeContent(boardDTO.getContent());
+
+            repository.save(board);
+    }
+
+    @Transactional
+    @Override
+    public void removeWithReplies(Long bno) {
+        //댓글 부터 삭제
+        replyRepository.deleteByBno(bno);
+
+        repository.deleteById(bno);
+    }
+
+
+}
+
+```
+
+- 게시물 등록은 BoardDTO 타입을 파라미터로 전달 받고, 생성된 게시물의 번호를 반환하도록 한다.
+- 게시물 목록 처리 : Object[]을 DTO로 변환 => Object[]의 내용은 board와 member, 댓글의 수는 Long 타입으로 나오게 되므로, 이를 파라미터로 전달 받아서 BoardDTO를 구성하도록 작성
+- 게시물 조회 처리 : 파라미터로 게시물의 번호(bno)를 파라미터로 받아서 처리하도록 BoardService와 BoardServiceImpl클래스에 get()메서드를 추가해서 작성. BoardRepository의 Board 엔터티와 Member엔터티, 댓글의 수를 가져오는 getBoardByBno()를 이용해서 처리한다.
+
+
+* 게시물 삭제 처리
+      * 게시물을 FK로 참조하고 있는 reply테이블 역시 삭제해준다.
+      * 해당 게시물의 모든 댓글을 삭제한 후에 해당 게시물을 삭제 하므로 두 작업이 하나의 트랜잭션으로 처리되어야 한다.
+      * 
+- ReplyRepository 인터페이스 (JPQL을 사용해서 update, delete를 진행하기 위해서는 @Modifying 어노테이션 추가)
+```
+public interface ReplyRepository extends JpaRepository<Reply, Long> {
+
+    @Modifying
+    @Query("delete from Reply r where r.board.bno = :bno")
+    void deleteByBno(Long bno);
 }
 ```
-- 스프링 MVC는 파라미터를 자동으로 수집해주는 기능이 있으므로, 화면에서 page와 size라는 파라미터를 전달하면 PageRequestDTO객체로 자동으로 수집된다. 
-
-- list.html 목록 출력
+- BoardService 인터페이스
 ```
-<!DOCTYPE html>
-<html lang="en" xmlns:th = "http://www.thymeleaf.org">
-
-<th:block th:replace="~{/layout/basic :: setContent(~{this::content})}">
-
-    <th:block th:fragment="content">
-
-        <h1>GuestBook List Page</h1>
-
-        <table class = "table table-striped">
-            <thead>
-            <tr>
-                <th scope="col">#</th>
-                <th scope="col">Title</th>
-                <th scope="col">Writer</th>
-                <th scope="col">Regdate</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each = "dto : ${result.dtoList}">
-                <th scope="row">[[${dto.gno}]]</th>
-                <td>[[${dto.title}]]</td>
-                <td>[[${dto.writer}]]</td>
-                <td>[[${#temporals.format(dto.regDate, 'yyyy/MM/dd')}]]</td>
-            </tr>
-            </tbody>
-        </table>
-    </th:block>
-</th:block>
+void removeWithReplies(Long bno); //삭제 기능
 ```
-- th:each를 이용해서 PageResultDTO안에 들어있는 dtoList를 반복 처리
-![image](https://user-images.githubusercontent.com/86938974/169181753-cc21a4e6-f1fe-47da-b910-80fbcce2c385.png)
 
+- BoardServiceImpl
 
- * 목록 페이지 처리
-- /guestbook/list 혹은 /guestbook/list?page=1의 경우 1페이지 출력
-- list.html 하단 페이지 처리
 ```
-<ul class="pagination h-100 justify-content-center align-items-center">
-            <li class="page-item" th:if="${result.prev}">
-                <a class="page-link" th:href="@{/guestbook/list(page=${result.start - 1})}" tabindex="-1">Previous</a>
-            </li>
+@Transactional
+    @Override
+    public void removeWithReplies(Long bno) {
+        //댓글 부터 삭제
+        replyRepository.deleteByBno(bno);
 
-            <li th:class=" 'page-item' + ${result.page==page?'active':''}" th:each="page : ${result.pageList}">
-                <a class="page-link" th:href="@{/guestbook/list(page=${page})}">[[${page}]]</a>
-            </li>
-
-            <li class="page-item" th:if="${result.next}">
-                <a class="page-link" th:href="@{/guestbook/list(page=${result.end+1})}">Next</a>
-            </li>
-        </ul>
+        repository.deleteById(bno);
+    }
 ```
-- 1페이지
-![image](https://user-images.githubusercontent.com/86938974/169187667-4ccfb35f-28ab-4014-8b39-d6d3d9931349.png)
-- Next 클릭(맨 뒤)
-![image](https://user-images.githubusercontent.com/86938974/169187752-a750a1c7-85db-4ef5-b476-22a445ef856f.png)
-- Previous 클릭
-![image](https://user-images.githubusercontent.com/86938974/169187764-b11e1c3b-b341-4058-9788-d7e2ab7cde45.png)
+- Transactional을 걸어주면 연속된 작업이 모두 성공하면 모두 commit, 하나라도 실패하면 모두 rollback 해준다.
 
-* 등록 페이지와 등록 처리
-      * GuestbookController 클래스
- ```
- @GetMapping("/register")
+* 컨트롤러와 화면 처리 (타임리프 사용)
+      * BoardController 클래스
+```
+package org.zerock.guestbook.controller;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.zerock.guestbook.dto.BoardDTO;
+import org.zerock.guestbook.dto.GuestbookDTO;
+import org.zerock.guestbook.dto.PageRequestDTO;
+import org.zerock.guestbook.service.BoardService;
+
+@Controller
+@RequestMapping("/board")
+@Log4j2
+@RequiredArgsConstructor
+public class BoardController {
+    private final BoardService boardService;
+
+    @GetMapping("/list")
+    public void list(PageRequestDTO pageRequestDTO, Model model){
+        log.info("list......"+pageRequestDTO);
+        model.addAttribute("result", boardService.getList(pageRequestDTO));
+    }
+
+    @GetMapping("/register")
     public void register(){
         log.info("register get....");
     }
 
     @PostMapping("/register")
-    public String registerPost(GuestbookDTO dto, RedirectAttributes redirectAttributes){
-        //insert 후 등록된 글번호 저장
-        Long gno = service.register(dto); // 폼에 입력된 값이 dto에 자동 수집됨
-        // msg라는 이름으로 뷰에 전달
-        redirectAttributes.addFlashAttribute("msg", gno);
-        return "redirect:/guestbook/list"; //목록으로 이동
-    }
- ```
-- Spring에서는 View에 입력한 값이 Controller에 전달되면 dto에 자동수집된다.
+    public String registerPost(BoardDTO dto, RedirectAttributes redirectAttributes){
+        Long bno = boardService.register(dto);
+        redirectAttributes.addFlashAttribute("msg", bno);
+        return "redirect:/board/list";
 
-       * register.html 생성
- ```
- <!DOCTYPE html>
+    }
+
+    @GetMapping({"/read", "/modify"})
+    public void read(@ModelAttribute("requestDTO") PageRequestDTO pageRequestDTO, Long bno, Model model){
+        BoardDTO boardDTO = boardService.get(bno);
+        model.addAttribute("dto", boardDTO);
+    }
+
+    @PostMapping("/remove")
+    public String remove(long bno, RedirectAttributes redirectAttributes){
+        boardService.removeWithReplies(bno);
+        redirectAttributes.addFlashAttribute("msg", bno);
+        return "redirect:/board/list";
+    }
+
+    @PostMapping("/modify")
+    public String modify(BoardDTO dto,
+                         @ModelAttribute("requestDTO") PageRequestDTO requestDTO,
+                         RedirectAttributes redirectAttributes){
+        boardService.modify(dto);
+
+        redirectAttributes.addAttribute("page", requestDTO.getPage());
+        redirectAttributes.addAttribute("type", requestDTO.getType());
+        redirectAttributes.addAttribute("keyword", requestDTO.getKeyword());
+        redirectAttributes.addAttribute("bno", dto.getBno());
+        return "redirect:/board/read";
+    }
+
+}
+
+```
+* 레이아웃 (basic.html , layout.html)
+      * basic.html
+```
+<!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<th:block th:fragment="setContent(content)">
+
+  <head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Simple Sidebar - Start Bootstrap Template</title>
+
+    <!--    &lt;!&ndash; Bootstrap core CSS &ndash;&gt;-->
+    <!--    <link th:href="@{/vendor/bootstrap/css/bootstrap.min.css}" rel="stylesheet">-->
+    <!--    &lt;!&ndash; Custom styles for this template &ndash;&gt;-->
+    <!--    <link th:href="@{/css/simple-sidebar.css}" rel="stylesheet">-->
+    <!--    &lt;!&ndash; Bootstrap core JavaScript &ndash;&gt;-->
+    <!--    <script th:src="@{/vendor/jquery/jquery.min.js}"></script>-->
+    <!--    <script th:src="@{/vendor/bootstrap/js/bootstrap.bundle.min.js}"></script>-->
+
+    <!-- Bootstrap core CSS -->
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="/css/simple-sidebar.css" rel="stylesheet">
+    <!-- Bootstrap core JavaScript -->
+    <script src="/vendor/jquery/jquery.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  </head>
+
+  <body>
+
+  <div class="d-flex" id="wrapper">
+
+    <!-- Sidebar -->
+    <div class="bg-light border-right" id="sidebar-wrapper">
+      <div class="sidebar-heading">Start Bootstrap </div>
+      <div class="list-group list-group-flush">
+        <a href="#" class="list-group-item list-group-item-action bg-light">Dashboard</a>
+        <a href="#" class="list-group-item list-group-item-action bg-light">Shortcuts</a>
+        <a href="#" class="list-group-item list-group-item-action bg-light">Overview</a>
+        <a href="#" class="list-group-item list-group-item-action bg-light">Events</a>
+        <a href="#" class="list-group-item list-group-item-action bg-light">Profile</a>
+        <a href="#" class="list-group-item list-group-item-action bg-light">Status</a>
+      </div>
+    </div>
+    <!-- /#sidebar-wrapper -->
+
+    <!-- Page Content -->
+    <div id="page-content-wrapper">
+
+      <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+        <button class="btn btn-primary" id="menu-toggle">Toggle Menu</button>
+
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
+            <li class="nav-item active">
+              <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Link</a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Dropdown
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                <a class="dropdown-item" href="#">Action</a>
+                <a class="dropdown-item" href="#">Another action</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#">Something else here</a>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="container-fluid">
+        <th:block th:replace="${content}"></th:block>
+      </div>
+    </div>
+    <!-- /#page-content-wrapper -->
+
+  </div>
+  <!-- /#wrapper -->
+
+
+
+  <!-- Menu Toggle Script -->
+  <script>
+    $("#menu-toggle").click(function(e) {
+      e.preventDefault();
+      $("#wrapper").toggleClass("toggled");
+    });
+  </script>
+
+  </body>
+</th:block>
+</html>
+
+```
+
+      * layout.html
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="setContent(content)">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        * {
+            margin:0;
+            padding: 0;
+        }
+        .header{
+            width:100vw;
+            height:20vh;
+            background-color: aqua;
+        }
+        .content{
+            width:100vw;
+            height:70vh;
+            background-color: lightgray;
+        }
+        .footer {
+            width: 100vw;
+            height: 10vh;
+            background-color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HEADER</h1>
+    </div>
+    <div class = "content">
+
+        <th:block th:replace="${content}"></th:block>
+
+    </div>
+    <div class="footer">
+        <h1>FOOTER</h1>
+    </div>
+</body>
+</th:block>
+</html>
+```
+
+      * list.html, register.html, read.html, modify.html은 thymeleaf를 사용했다.
+```
 <th:block th:replace="~{/layout/basic :: setContent(~{this::content})}">
-    <th:block th:fragment="content">
-        <h1 class="mt-4">GuestBook Register Page</h1>
 
-        <form th:action="@{/guestbook/register}" th:method="post">
-            <div class="form-group">
-                <label>Title</label>
-                <input type = "text" class="form-control" name="title" placeholder="Enter Title">
-            </div>
-            <div class="form-group">
-                <label>Content</label>
-                <textarea class="form-control" rows="5" name="content"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Writer</label>
-                <input type="text" class="form-control" name="writer" placeholder="Enter Writer">
-            </div>
+<th:block th:fragment="content">
+.
+.
+.
 
-            <button type="submit" class="btn btn-primary">Submit</button>
-        </form>
-    </th:block>
-</th:block>
- ```
-- 글쓰기 화면
- ![image](https://user-images.githubusercontent.com/86938974/169192990-59883edb-20c8-4206-854b-dd4a128bdd05.png)
-- 글 작성
-![image](https://user-images.githubusercontent.com/86938974/169193767-e5f9da0c-1954-4f21-b068-f49114b4f8aa.png)
-- 최상단에 올라와 있는 글 확인
-![image](https://user-images.githubusercontent.com/86938974/169193810-222a58fd-a45e-44f6-ad9b-88e373391ad3.png)
-
-* 등록 처리와 목록 페이지의 모달창(부트스트랩 사용)
-- list.html에 추가
 ```
-<h1>GuestBook List Page
-            <span>
-<!--                <a th:href="@{/guestbook/register}">-->
-<!--                    <button type="button" class="btn btn-outline-secondary">등록하기</button>-->
-<!--                </a>-->
-                <a href="/guestbook/register" class="btn btn-outline-secondary">등록하기</a>
-            </span>
-        </h1>
- <!-- 모달창 --------------------------------->
-        <div class="modal" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-
-                    <!-- Modal Header -->
-                    <div class="modal-header">
-                        <h5 class="modal-title">알림</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <!-- Modal body -->
-                    <div class="modal-body">
-                        <p>처리가 완료되었습니다.</p>
-                    </div>
-
-                    <!-- Modal footer -->
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <script th:inline="javascript">
-            var msg = [[${msg}]];
-            console.log(msg);
-
-            if(msg){
-                $(".modal").modal()
-            }
-        </script>
-        <!-- 모달창 종료-->
+* SearchBoardRepositoryImpl
 ```
- - 화면
-![image](https://user-images.githubusercontent.com/86938974/169197015-918e4fa1-9e22-4b95-a31d-b6c7cec1e2e4.png)
-- 등록하기 클릭시 이동
-![image](https://user-images.githubusercontent.com/86938974/169197044-f6a0160c-d06a-4192-8488-4775cc6c0104.png)
-- 작성
-![image](https://user-images.githubusercontent.com/86938974/169203783-042cb01e-68cc-4396-8e09-64b47a9543c3.png)
-- 모달창 확인
-![image](https://user-images.githubusercontent.com/86938974/169203834-813be26e-ff0e-410c-ada8-8dbfd67b1bac.png)
+package org.zerock.guestbook.respository.search;
 
- * 등록 페이지의 링크와 조회 페이지 링크 처리
- - list.html 수정하여 각 글의 번호에 링크 처리
-```
- <tr th:each = "dto : ${result.dtoList}">
-                <th scope="row">
-                    <a th:href="@{/guestbook/read(gno=${dto.gno}, page=${result.page})}">
-                        [[${dto.gno}]]
-                    </a>
-                </th>
-```
-![image](https://user-images.githubusercontent.com/86938974/169206299-e977291b-565b-4d11-bc57-3945a4c64585.png)
-  
- * 방명록 조회 처리
-- GuestbookService 인터페이스 추가
-```
-GuestbookDTO read(Long gno);
-```
-  
-- GuestbookServiceImpl 클래스
-```
-@Override
-    public GuestbookDTO read(Long gno) {
-        Optional<Guestbook> result = repository.findById(gno);
-        return result.isPresent()? entityToDto(result.get()):null;
-    }
-```
-- GuestbookController 클래스 추가
-```
- @GetMapping("/read")
-    public void read(long gno, @ModelAttribute("requestDTO") PageRequestDTO requestDTO, Model model){
-        log.info("gno:"+gno);
-        GuestbookDTO dto = service.read(gno);
-        model.addAttribute("dto",dto);
-    }
-```
-- 조회화면 작성 (read.html 생성)
-```
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.JPQLQuery;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.support.QuerydslRepositorySupport;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.entity.QBoard;
+import org.zerock.guestbook.entity.QMember;
+import org.zerock.guestbook.entity.QReply;
 
-<th:block block th:replace="~{/layout/basic :: setContent(~{this::content})}">
 
-    <th:block th:fragment="content">
+import java.util.List;
+import java.util.stream.Collectors;
 
-        <h1 class="mt-4">GuestBook Read Page</h1>
+@Log4j2
+public class SearchBoardRepositoryImpl extends QuerydslRepositorySupport implements SearchBoardRepository {
 
-        <div class="form-group">
-            <label>Gno</label>
-            <input type="text" class="form-control" name="gno" th:value="${dto.gno}" readonly>
-        </div>
-
-        <div class="form-group">
-            <label>Title</label>
-            <input type="text" class="form-control" name="title" th:value="${dto.title}" readonly>
-        </div>
-
-        <div class="form-group">
-            <label>Content</label>
-            <textarea class="form-control" rows="5" name="content" readonly>[[${dto.content}]]</textarea>
-        </div>
-
-        <div class="form-group">
-            <label>Writer</label>
-            <input type="text" class="form-control" name="writer" th:value="${dto.writer}" readonly>
-        </div>
-
-        <div class="form-group">
-            <label>RegDate</label>
-            <input type="text" class="form-control" name="regDate"
-                   th:value="${#temporals.format(dto.regDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
-        </div>
-
-        <div class="form-group">
-            <label>ModDate</label>
-            <input type="text" class="form-control" name="modDate"
-                   th:value="${#temporals.format(dto.modDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
-        </div>
-
-        <a th:href="@{/guestbook/modify(gno=${dto.gno},page=${requestDTO.page})}">
-            <button type="button" class="btn btn-primary">Modify</button>
-        </a>
-        <a th:href="@{/guestbook/list(page=${requestDTO.page})}">
-            <button type="button" class="btn btn-info">List</button>
-        </a>
-    </th:block>
-
-</th:block>
-```
-- 화면
-![image](https://user-images.githubusercontent.com/86938974/169213978-b8ef5f18-4798-48a1-94c9-00eafb0c54c0.png)
- 
-* 방명록의 수정/삭제 처리
-- GuestbookController에 추가
-```
-@GetMapping({"/read","/modify"})
-```
-- 수정 화면(Modify.html) 생성
-```
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-
-<th:block block th:replace="~{/layout/basic :: setContent(~{this::content})}">
-
-    <th:block th:fragment="content">
-
-        <h1 class="mt-4">GuestBook Modify Page</h1>
-
-        <form action="/guestbook/modify" method="post">
-            <div class="form-group">
-                <label>Gno</label>
-                <input type="text" class="form-control" name="gno" th:value="${dto.gno}" readonly>
-            </div>
-
-            <div class="form-group">
-                <label>Title</label>
-                <input type="text" class="form-control" name="title" th:value="${dto.title}">
-            </div>
-
-            <div class="form-group">
-                <label>Content</label>
-                <textarea class="form-control" rows="5" name="content" >[[${dto.content}]]</textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Writer</label>
-                <input type="text" class="form-control" name="writer" th:value="${dto.writer}" readonly>
-            </div>
-
-            <div class="form-group">
-                <label>RegDate</label>
-                <input type="text" class="form-control" name="regDate"
-                       th:value="${#temporals.format(dto.regDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
-            </div>
-
-            <div class="form-group">
-                <label>ModDate</label>
-                <input type="text" class="form-control" name="modDate"
-                       th:value="${#temporals.format(dto.modDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
-            </div>
-        </form>
-
-        <button type="button" class="btn btn-primary">Modify</button>
-        <button type="button" class="btn btn-info">List</button>
-        <button type="button" class="btn btn-danger">Remove</button>
-
-    </th:block>
-
-</th:block>
-```
-- 수정 화면
-![image](https://user-images.githubusercontent.com/86938974/169219194-c367d5fe-a717-465c-ba7e-0372fcd6fccd.png)
-
- * 서비스 계층에서의 수정 삭제
-- GuestbookService 인터페이스 코드 추가
-```
-void remove(Long gno);
-void modify(GuestbookDTO dto);
-```
- 
-- GuestbookServiceImpl 클래스 오버라이드
-```
- @Override
-    public void remove(Long gno) {
-        repository.deleteById(gno);
+    public SearchBoardRepositoryImpl() {
+        super(Board.class);
     }
 
     @Override
-    public void modify(GuestbookDTO dto) {
-        //업데이트 하는 항목은 '제목', '내용'
-        Optional<Guestbook> result = repository.findById(dto.getGno());
+    public Board search1() {
 
-        if (result.isPresent()){
-            Guestbook entity = result.get();
-            
-            entity.changeTitle(dto.getTitle());
-            entity.changeContent(dto.getContent());
-            
-            repository.save(entity);
+        log.info("search1........................");
 
-        }
-    }
-```
-- GuestbookController의 게시물 삭제
-```
-@PostMapping("/remove")
-    public String remove(long gno, RedirectAttributes redirectAttributes){
-        log.info("gno:"+gno);
-        service.remove(gno);
-        redirectAttributes.addFlashAttribute("msg",gno);
-        return "redirect:/guestbook/list";
-    }
-```
-- modify.html 삭제처리
-```
-<button type="button" class="btn btn-primary modifyBtn">Modify</button>
-        <button type="button" class="btn btn-info">List</button>
-        <button type="button" class="btn btn-danger removeBtn">Remove</button>
-        
-        <script th:inline="javascript">
-            
-            var actionForm = $("form"); //form태그 객체
-            
-            $(".removeBtn").click(function(){
-                actionForm
-                    .attr("action", "/guestbook/remove")
-                    .attr("method", "post");
-                
-                actionForm.submit();
-            });
-        </script>
-```
-- Remove버튼 클릭시 <form>태그의 action 속성과 method 속성을 조정한다. 
-![image](https://user-images.githubusercontent.com/86938974/169223798-29ee51cf-6a06-4f99-b591-86c1f3619ccd.png)
-- 삭제와 동시에 이동
-![image](https://user-images.githubusercontent.com/86938974/169223839-f8bf3729-61fc-4044-a98d-b43739b14c8b.png)
-- DB에서 없어진 것 확인
-![image](https://user-images.githubusercontent.com/86938974/169223891-84ff519e-cb07-4bb6-8f55-210f7ccfe380.png)
+        QBoard board = QBoard.board;
+        QReply reply = QReply.reply;
+        QMember member = QMember.member;
 
-- page값도 <form>태그에 추가해서 전달
-```
- <input type="hidden" name="page" th:value="${#requestDTO.page}">
-```
+        JPQLQuery<Board> jpqlQuery = from(board);
+        jpqlQuery.leftJoin(member).on(board.writer.eq(member));
+        jpqlQuery.leftJoin(reply).on(reply.board.eq(board));
 
-- GuestbookController에 PostMapping추가
-```
-@PostMapping("/modify")
-    public String modify(GuestbookDTO dto, @ModelAttribute("requestDTO") PageRequestDTO requestDTO,
-                         RedirectAttributes redirectAttributes){
+        JPQLQuery<Tuple> tuple = jpqlQuery.select(board, member.email, reply.count());
+        tuple.groupBy(board);
 
-        service.modify(dto);
+        log.info("---------------------------");
+        log.info(tuple);
+        log.info("---------------------------");
 
-        redirectAttributes.addFlashAttribute("page", requestDTO.getPage());
-        redirectAttributes.addFlashAttribute("gno",dto.getGno());
+        List<Tuple> result = tuple.fetch();
 
-        return "redirect:/guestbook/read";
+        log.info(result);
 
-
+        return null;
     }
 
-```
-- 수정 화면에서의 이벤트 처리(modify.html) jquery 사용
-```
- $(".modifyBtn").click(function(){
-                if(!confirm("수정하시겠습니까?")){
-                    return;
-                }
-                actionForm
-                    .attr("action","/guestbook/modify")
-                    .attr("method", "post")
-                    .submit();
-            });
-```
-![image](https://user-images.githubusercontent.com/86938974/169428188-58836715-2bc4-4a19-896a-943bdbe03673.png)
+    @Override
+    public Page<Object[]> searchPage(String type, String keyword, Pageable pageable) {
 
- - 수정 화면에서 다시 목록 페이지
-```
-$(".listBtn").click(function(){
-                var pageInfo = $("input[name='page']");
-                
-                actionForm.empty(); // form태그의 모든 내용을 지우고
-                actionForm.append(pageInfo); //목록 페이지 이동에 필요한 내용 추가
-                actionForm
-                    .attr("action", "/guestbook/list")
-                    .attr("method","get");
-                actionForm.submit();
-            });
-```
- * 검색 처리
-- 제목, 내용, 작성자로 검색
-- 제목 혹은 내용으로 검색
-- 제목 혹은 내용 혹은 작성자로 검색
+        log.info("searchPage.............................");
 
-       * 서버측 검색 처리
-- PageRequestDTO 클래스 
-- 검색조건(type)과 검색 키워드(keyword)를 추가
-```
-private String type;
-private String keyword;
-```
-      * 서비스 계층의 검색
-- GuestbookServiceImpl 클래스
-- 동적으로 검색 조건이 처리되는 경우의 실제 코딩은 Querydsl을 통해서 BooleanBuilder를 작성한다.
-```
-private BooleanBuilder getSearch(PageRequestDTO requestDTO){
-        //Querydsl 처리
-        String type = requestDTO.getType();
+        QBoard board = QBoard.board;
+        QReply reply = QReply.reply;
+        QMember member = QMember.member;
+
+        JPQLQuery<Board> jpqlQuery = from(board);
+        jpqlQuery.leftJoin(member).on(board.writer.eq(member));
+        jpqlQuery.leftJoin(reply).on(reply.board.eq(board));
+
+        //SELECT b, w, count(r) FROM Board b
+        //LEFT JOIN b.writer w LEFT JOIN Reply r ON r.board = b
+        JPQLQuery<Tuple> tuple = jpqlQuery.select(board, member, reply.count());
+
         BooleanBuilder booleanBuilder = new BooleanBuilder();
-        QGuestbook qGuestbook = QGuestbook.guestbook;
-        String keyword = requestDTO.getKeyword();
-        //gno>0 조건만 생성
-        BooleanExpression expression = qGuestbook.gno.gt(0L);
+        BooleanExpression expression = board.bno.gt(0L);
+
         booleanBuilder.and(expression);
 
-        if(type==null || type.trim().length() == 0){
-            // 검색 조건이 없는 경우
-            return booleanBuilder;
+        if(type != null){
+            String[] typeArr = type.split("");
+            //검색 조건을 작성하기
+            BooleanBuilder conditionBuilder = new BooleanBuilder();
+
+            for (String t:typeArr) {
+                switch (t){
+                    case "t":
+                        conditionBuilder.or(board.title.contains(keyword));
+                        break;
+                    case "w":
+                        conditionBuilder.or(member.email.contains(keyword));
+                        break;
+                    case "c":
+                        conditionBuilder.or(board.content.contains(keyword));
+                        break;
+                }
+            }
+            booleanBuilder.and(conditionBuilder);
         }
 
-        //검색 조건을 작성하기
-        BooleanBuilder conditionBuilder = new BooleanBuilder();
-        
-        if (type.contains("t")){
-            conditionBuilder.or(qGuestbook.title.contains(keyword));
-        }
-        if (type.contains("c")){
-            conditionBuilder.or(qGuestbook.content.contains(keyword));
-        }
-        if (type.contains("w")){
-            conditionBuilder.or(qGuestbook.writer.contains(keyword));
-        }
-        // 모든 조건 통합
-        booleanBuilder.and(conditionBuilder);
-        return booleanBuilder;
+        tuple.where(booleanBuilder);
+
+        //order by
+        Sort sort = pageable.getSort();
+
+        //tuple.orderBy(board.bno.desc());
+
+        sort.stream().forEach(order -> {
+            Order direction = order.isAscending()? Order.ASC: Order.DESC;
+            String prop = order.getProperty();
+
+            PathBuilder orderByExpression = new PathBuilder(Board.class, "board");
+            tuple.orderBy(new OrderSpecifier(direction, orderByExpression.get(prop)));
+
+        });
+        tuple.groupBy(board);
+
+        //page 처리
+        tuple.offset(pageable.getOffset());
+        tuple.limit(pageable.getPageSize());
+
+        List<Tuple> result = tuple.fetch();
+
+        log.info(result);
+
+        long count = tuple.fetchCount();
+
+        log.info("COUNT: " +count);
+
+        return new PageImpl<Object[]>(
+                result.stream().map(t -> t.toArray()).collect(Collectors.toList()),
+                pageable,
+                count);
     }
+}
 ```
-- GuestbookServiceImpl에 작성한 getSearch()는 PageRequestDTO 파라미터를 받아 검색 조건이 있는 경우에는 conditionBuilder 변수를 생성해서 각 검색 조건을 'or'로 연결하여 처리한다. 검색 조건이 없다면 'gno > 0'으로만 생성된다.
+- Tuple 객체 사용, JPQLQuery의 leftjoin, join을 이용해서 Board, Member, Reply처리, Groupby사용
+- 파라미터로 전달되는 type 값은 '제목(t), 내용(c), 작성자(w)'를 하나 혹은 조합으로 'tcw'와 같은 형태이다.
+- 파라미터에 따라서 검색 조건을 추가할 수 있도록 BooleanBuilder와 BooleanExpression 추가
 
-- getList() 코드 수정
+* 목록 화면에서의 검색 처리
+      * list.html
 ```
-@Override
-    public PageResultDTO<GuestbookDTO, Guestbook> getList(PageRequestDTO requestDTO) {
-        Pageable pageable = requestDTO.getPageable(Sort.by("gno").descending());
-
-        BooleanBuilder booleanBuilder = getSearch(requestDTO);
-
-        //Querydsl 사용
-        Page<Guestbook> result = repository.findAll(booleanBuilder,pageable);
-
-        //PageResultDTO생성자의 map()함수에서
-        Function<Guestbook, GuestbookDTO> fn = (entity -> entityToDto(entity));
-
-        return new PageResultDTO<>(result, fn);
-    }
-```
- - /guestbook/list?page=1&type=t&keyword=11 검색으로 확인
-![image](https://user-images.githubusercontent.com/86938974/169435434-2cc73c48-f77c-43ed-833f-27b075e0a6e6.png)
-
-- list.html에 검색 타입과 키워드 입력하고 검색 버튼 추가
-```
-<form action="/guestbook/list" method="get" id="searchForm">
+ <form action="/board/list" method="get" id="searchForm">
             <div class="input-group">
                 <input type="hidden" name="page" value="1">
                 <div class="input-group-prepend">
@@ -1416,87 +836,24 @@ private BooleanBuilder getSearch(PageRequestDTO requestDTO){
             </div>
         </form>
 ```
-![image](https://user-images.githubusercontent.com/86938974/169438868-666c9064-cef1-4002-ba08-ce7894a2cce6.png)
-- hidden 태그로 처리된 page값은 1로, Search 버튼을 누르는 것은 새롭게 검색을 진행하는 것이므로 무조겐 1페이지를 지정한다.
-- Clear 버튼 클릭시 모든 검색 조건 없이 새로 목록 페이지를 본다.
 
-- list.html 이벤트 처리
-```
-var searchForm = $("#searchForm");
-           $('.btn-search').click(function(e){
-               searchForm.submit()
-           });
-           $('.btn-clear').click(function(e){
-               searchForm.empty().submit();
-           });
-```
-![image](https://user-images.githubusercontent.com/86938974/169440803-8e9e74b0-ede5-424e-aa06-06498f43e709.png)
-- Clear버튼 클릭시
-![image](https://user-images.githubusercontent.com/86938974/169440982-d8483ebc-dbf2-4278-ac14-0edde83864fe.png)
- 
-- 페이지 번호의 검색 조건 추가
-- 목록페이지 하단의 검색은 page라는 값만을 처리하므로, 검색 타입(type)과 키워드(keyword) 추가
-- list.html
-```
-<ul class="pagination h-100 justify-content-center align-items-center">
-            <li class="page-item" th:if="${result.prev}">
-                <a class="page-link" th:href="@{/guestbook/list(page=${result.start - 1}, type=${pageRequestDTO.type},
-                 keyword = ${pageRequestDTO.keyword})}" tabindex="-1">Previous</a>
-            </li>
 
-            <li th:class=" 'page-item ' + ${result.page == page?'active':''} " th:each="page: ${result.pageList}">
-                <a class="page-link" th:href="@{/guestbook/list(page = ${page},
-                 type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">[[${page}]]</a>
-            </li>
 
-            <li class="page-item" th:if="${result.next}">
-                <a class="page-link" th:href="@{/guestbook/list(page=${result.end+1},
-                type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">Next</a>
-            </li>
-        </ul>
-```
-- 글 목록을 클릭해서 이동하는 부분에도 페이지 처리와 동일하게 type, keyword 값 전달
-```
- <tr th:each = "dto : ${result.dtoList}">
-                <th scope="row">
-                    <a th:href="@{/guestbook/read(gno=${dto.gno}, page=${result.page},
-                     type=${pageRequestDTO.type}, keyword=${pageRequestDTO.keyword})}">
-                        [[${dto.gno}]]
-                    </a>
-                </th>
- 
-  .
-  .
-  .
-```
-* 수정 작업 후 이동 처리
-- 수정은 다시 조회 페이지로 이동하기 때문에 검색 조건을 같이 유지해준다. 
-```
-<input type="hidden" name="type" th:value="${requestDTO.type}">
-<input type="hidden" name="keyword" th:value="${requestDTO.keyword}">
 
-$(".listBtn").click(function(){
-                // var pageInfo = $("input[name='page']");
 
-                var page=$("input[name='page']");
-                var type=$("input[name='type']");
-                var keyword=$("input[name='keyword']");
-                                    
-                actionForm.empty(); // form태그의 모든 내용을 지우고
-                actionForm.append(page); 
-                actionForm.append(type); 
-                actionForm.append(keyword); 
-                actionForm
-                    .attr("action", "/guestbook/list")
-                    .attr("method","get");
-                actionForm.submit();
-            });
 
-```
-- GuestbookController 추가
-```
-    @PostMapping("/modify")
-  ...생략
-        redirectAttributes.addAttribute("type",requestDTO.getType());
-        redirectAttributes.addAttribute("keyword",requestDTO.getKeyword());
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
