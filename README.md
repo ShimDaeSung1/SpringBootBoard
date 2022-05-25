@@ -837,7 +837,275 @@ public class SearchBoardRepositoryImpl extends QuerydslRepositorySupport impleme
         </form>
 ```
 
+* JSON과 Ajax로 댓글 처리
+      * 게시물이 로딩된 이후에 화면에서 댓글의 숫자를 클릭하면 해당 게시물에 속한 댓글을 Ajax로 가져옴
+      * 특정한 버튼을 클릭하면 새로운 댓글을 입력할 수 있는 모달창 보여주고 Ajax의 Post방식으로 댓글을 전송한다.
+- Reply 클래스
+```
+package org.zerock.guestbook.entity;
 
+import lombok.*;
+
+import javax.persistence.*;
+
+@Entity
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@ToString(exclude = "board")
+public class Reply extends BaseEntity{
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long rno;
+    private String text;
+    private String replyer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Board board;
+}
+
+```
+- ReplyRepository 인터페이스
+```
+// 게시물로 댓글 목록 가져오기
+    List<Reply> getRepliesByBoardOrderByRno(Board board);
+```
+
+- ReplyDTO
+
+```
+package org.zerock.guestbook.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+public class ReplyDTO {
+    
+    private Long rno;
+    private String text;
+    private String replyer;
+    private Long bno; // 게시글번호
+    private LocalDateTime regDate, modDate;
+}
+
+```
+- ReplyDTO를 Reply 엔티티로 처리하거나 반대의 경우에 대한 처리는 ReplyService인터페이스, ReplyServiceImpl 클래스 작성 처리
+- ReplyService : 
+- 댓글 등록(register)
+- 특정 게시물의 댓글 리스트 가져오기(getList)
+- 댓글을 수정(modify)하고 삭제(remove)
+- Reply를 ReplyDTO를 변환하는 entityToDTO()
+- ReplyDTO를 Reply로 변환하면 dtoToEntity()
+
+      * ReplyService
+
+```
+package org.zerock.guestbook.service;
+
+import org.zerock.guestbook.dto.ReplyDTO;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.entity.Reply;
+
+import java.util.List;
+
+public interface ReplyService {
+    
+    Long register(ReplyDTO replyDTO);
+    
+    List<ReplyDTO> getList(Long bno);
+    
+    void modify(ReplyDTO replyDTO);
+    
+    void remove(Long rno);
+    
+    default Reply dtoToEntity(ReplyDTO replyDTO){
+        Board board = Board.builder().bno(replyDTO.getBno()).build();
+        
+        Reply reply = Reply.builder()
+                .rno(replyDTO.getRno())
+                .text(replyDTO.getText())
+                .replyer(replyDTO.getReplyer())
+                .board(board)
+                .build();
+        
+        return reply;
+    }
+    
+    default ReplyDTO entityToDTO(Reply reply){
+        ReplyDTO dto = ReplyDTO.builder()
+                .rno(reply.getRno())
+                .text(reply.getText())
+                .replyer(reply.getReplyer())
+                .regDate(reply.getRegDate())
+                .modDate(reply.getModDate())
+                .build();
+        return dto;
+    }
+}
+
+```
+
+      * ReplyServiceImpl
+```
+package org.zerock.guestbook.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.zerock.guestbook.dto.ReplyDTO;
+import org.zerock.guestbook.entity.Board;
+import org.zerock.guestbook.entity.Reply;
+import org.zerock.guestbook.respository.ReplyRepository;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ReplyServiceImpl implements ReplyService{
+
+    private final ReplyRepository replyRepository;
+
+    @Override
+    public Long register(ReplyDTO replyDTO) {
+        Reply reply = dtoToEntity(replyDTO);
+
+        replyRepository.save(reply);
+        return reply.getRno();
+    }
+
+    @Override
+    public List<ReplyDTO> getList(Long bno) {
+        List<Reply> result = replyRepository
+                .getRepliesByBoardOrderByRno(Board.builder().bno(bno).build());
+        return result.stream().map(reply -> entityToDTO(reply)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void modify(ReplyDTO replyDTO) {
+        Reply reply = dtoToEntity(replyDTO);
+        replyRepository.save(reply);
+    }
+
+    @Override
+    public void remove(Long rno) {
+        replyRepository.deleteById(rno);
+    }
+}
+
+```
+- DB에 수정, 삽입시 Entity여야 하므로 dtoToEntity 사용해서 DTO를 Entity로 바꿔주고
+- controller로 내보내서 출력하기 위해 사용해야하면 EntityToDTO를 사용해서 html에서 thymeleaf로 사용할 수 있도록 DTO로 바꾼다.
+
+* @RestController
+      * ReplyController 클래스
+```
+package org.zerock.guestbook.controller;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.zerock.guestbook.dto.ReplyDTO;
+import org.zerock.guestbook.service.ReplyService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/replies")
+@Log4j2
+@RequiredArgsConstructor
+public class ReplyController {
+
+    private final ReplyService replyService;
+
+    @GetMapping(value = "/board/{bno}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ReplyDTO>> getListByBoard(@PathVariable("bno") Long bno){
+        return new ResponseEntity<>(replyService.getList(bno), HttpStatus.OK);
+    }
+}
+
+```
+- @RestController의 경우 모든 메서드의 리턴 타입은 기본으로 JSON사용
+- 메서드의 반환 타입은 ResponseEntity라는 객체를 이용하는데 이를 이용하면 HTTP의 상태 코드 등을 같이 전달할 수 있다.
+- @PathVariable을 통해 /replies/board/100과 같이 특정 게시물 번호로 조회할 때 100이라는 데이터를 변수로 처리할 수 있다.
+
+* 조회 화면에서 처리
+      * read.html 일부
+```
+        <div>
+            <div class="mt-4">
+                <h5><span class="badge badge-secondary replyCount">Reply Count [[${dto.replyCount}]]</span> </h5>
+            </div>
+            <div class="list-group replyList">
+
+            </div>
+        </div>
+        
+        <script th:inline="javascript">
+            $(document).ready(function(){
+
+                var bno = [[${dto.bno}]];
+                var listGroup = $(".replyList");
+
+                $(".replyCount").click(function(){
+                    $.getJSON('/replies/board'+bno, function(arr){
+                        console.log(arr);
+                    })//end getJson
+                })//end click
+
+                //댓글이 추가될 영역
+                var listGroup = $(".replyList");
+
+                function formatTime(str){
+                    var date = new Date(str);
+
+                    return date.getFullYear() + '/' +
+                        (date.getMonth() + 1) + '/' +
+                        date.getDate() + ' ' +
+                        date.getHours() + ':' +
+                        date.getMinutes();
+                }
+
+                function loadJsonData(){
+                    $.getJSON('/replies/board/'+bno, function(arr){
+                        var str = "";
+
+                        $('.replyCount').html(" Reply Count " + arr.length);
+
+                        $.each(arr, function(idx, reply){
+                            console.log(reply);
+                            str += '    <div class="card-body" data-rno="'+reply.rno+'"><b>'+reply.rno +'</b>';
+                            str += '    <h5 class="card-title">'+reply.text+'</h5>';
+                            str += '    <h6 class="card-subtitle mb-2 text-muted">'+reply.replyer+'</h6>';
+                            str += '    <p class="card-text">'+ formatTime(reply.regDate) +'</p>';
+                            str += '    </div>';
+                        })
+                        listGroup.html(str);
+                    });
+                }
+                $(".replyCount").click(function(){
+                    loadJsonData();
+                })
+
+
+
+            });
+        </script>
+```
 
 
 
