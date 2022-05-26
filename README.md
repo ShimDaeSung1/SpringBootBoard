@@ -1107,12 +1107,141 @@ public class ReplyController {
         </script>
 ```
 
+* 댓글 추가와 모달창
+```
+<div class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modal title</h5>
 
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <input class="form-control" type="text" name="replyText" placeholder="Reply Text...">
+                        </div>
+                        <div class="form-group">
+                            <input class="form-control" type="text" name="replyer" placeholder="Replyer">
+                            <input type="hidden" name="rno">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger replyRemove">Remove</button>
+                        <button type="button" class="btn btn-warning replyModify">Modify</button>
+                        <button type="button" class="btn btn-primary replySave">Save</button>
+                        <button type="button" class="btn btn-outline-secondary replyClose" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+         var modal = $('.modal');
 
+            $('.addReply').click(function(){
+                modal.modal('show');
 
+                //댓글 입력하는 부분 초기화
+                $('input[name="replyText"]').val('');
+                $('input[name="replyer"]').val('');
 
+                $(".modal-footer .btn").hide(); // 모달 내의 모든 버튼 숨기기
+                $('.replySave, .replyClose').show(); //필요한 버튼만 보이게함
+```
+      * 화면 구성
+![image](https://user-images.githubusercontent.com/86938974/170393895-c400a505-5082-4e19-81b9-51e52c1f93e4.png)
+      * 모달 창
+![image](https://user-images.githubusercontent.com/86938974/170393922-947b960b-6a2d-4a22-b969-e115e464134d.png)
 
+* Ajax 요청
+```
+$(".replySave").click(function(){
+                var reply = {
+                    bno: bno,
+                    text: $('input[name="replyText"]').val(),
+                    replyer: $('input[name="replyer"]').val()
+                }
+                
+                $.ajax({
+                    url:'/replies',
+                    method: 'post',
+                    data: JSON.stringify(reply),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    success: function (data){
+                        var newRno = parseInt(data);
+                        alert(newRno+"번 댓글이 등록되었습니다.")
+                        modal.modal('hide');
+                        loadJSONData();
+                    }
+                })
+            });
+```
+* ReplyController 클래스
+```
+@PostMapping("")
+    public ResponseEntity<Long> register(@RequestBody ReplyDTO replyDTO){
+        Long rno = replyService.register(replyDTO);
+        return new ResponseEntity<>(rno, HttpStatus.OK);
+    }
+```
+* 댓글 삽입
+![image](https://user-images.githubusercontent.com/86938974/170397409-c92bb2b9-1b99-496b-9e96-997ee23274f8.png)
 
+![image](https://user-images.githubusercontent.com/86938974/170397442-68d1afca-e628-4423-b8a7-fb12def22abc.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170397484-568a8c88-5463-4d62-8f84-a7c98df3d309.png)
+
+* 댓글 카운트 
+![image](https://user-images.githubusercontent.com/86938974/170397575-80602686-e0e6-4e88-9efc-90f30c657017.png)
+
+* 댓글 삭제처리
+
+```
+
+$('.replyList').on("click",".card-body", function (){
+                    var rno = $(this).data("rno");
+
+                    $("input[name='replyText']").val($(this).find('.card-title').html());
+                    $("input[name='replyer']").val($(this).find('.card-subtitle').html());
+                    $("input[name='rno']").val(rno);
+
+                    $(".modal-footer .btn").hide();
+                    $(".replyRemove, .replyModify, .replyClose").show();
+
+                    modal.modal('show');
+                })
+```
+* DeleteMapping 사용
+```
+@DeleteMapping("/{rno}")
+    public ResponseEntity<String> remove(@PathVariable("rno") Long rno){
+        replyService.remove(rno);
+        return new ResponseEntity<>("success", HttpStatus.OK);
+    }
+```
+* 댓글 클릭시 뜨는 모달창
+
+![image](https://user-images.githubusercontent.com/86938974/170400923-bd5f668f-9831-44e0-9a84-b1d842fc1b40.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170400943-d4c6ca25-e698-488d-b54a-d8414995fe1e.png)
+
+* 댓글 수정 처리
+```
+@PutMapping("/{rno}")
+    public ResponseEntity<String> modify(@RequestBody ReplyDTO replyDTO){
+        replyService.modify(replyDTO);
+        return new ResponseEntity<>("success", HttpStatus.OK)
+    }
+```
+
+![image](https://user-images.githubusercontent.com/86938974/170401688-fc962bea-b2ae-4e63-8d0b-bfa572834d11.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170401766-1bd572a3-2c5d-4ec4-98ed-60d6d3471a65.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170401782-8dd977b6-d81c-4c92-a906-0bdc5c3281a6.png)
 
 
 
