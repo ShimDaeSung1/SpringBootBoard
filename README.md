@@ -836,6 +836,40 @@ public class SearchBoardRepositoryImpl extends QuerydslRepositorySupport impleme
             </div>
         </form>
 ```
+* 게시글 수정과 삭제
+
+![image](https://user-images.githubusercontent.com/86938974/170402996-8391eacc-d0cc-445a-800f-772b2e20f1e6.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403040-c3e4e682-3db8-484e-93b0-4d02c0f43a11.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403060-b119c4dc-3802-4494-b659-7a86a26ec370.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403098-30ae56d1-47ce-41b7-b8c8-7c5545d6e59f.png)
+
+* 321번 게시글 삭제 처리
+![image](https://user-images.githubusercontent.com/86938974/170403200-0b91772d-2495-4a8f-96ad-bf3c008e2efb.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403225-0b7f6ca5-4305-4dd7-824c-b9de81781173.png)
+
+* 사라진 것 확인
+![image](https://user-images.githubusercontent.com/86938974/170403268-a8ff4f2a-fb49-47e1-8626-df8151f1c5ee.png)
+
+* 제목+내용 검색과 페이징 처리
+
+![image](https://user-images.githubusercontent.com/86938974/170403436-a2ebb5e7-1196-4e7b-9bc0-266434bb2611.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403455-c46972ab-fa3f-4680-afb0-8936155b8675.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403475-537527e2-0bde-4145-be88-2ced6bb56d0a.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403496-a2329b8f-d8ba-4b78-acbe-3bd7ab881152.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403511-c6ab7530-3135-4170-915d-734b914b3179.png)
+
+![image](https://user-images.githubusercontent.com/86938974/170403533-afce882d-0a71-4222-b076-4f1b8a42e28b.png)
+
+
+
 
 * JSON과 Ajax로 댓글 처리
       * 게시물이 로딩된 이후에 화면에서 댓글의 숫자를 클릭하면 해당 게시물에 속한 댓글을 Ajax로 가져옴
@@ -1242,38 +1276,6 @@ $('.replyList').on("click",".card-body", function (){
 ![image](https://user-images.githubusercontent.com/86938974/170401766-1bd572a3-2c5d-4ec4-98ed-60d6d3471a65.png)
 
 ![image](https://user-images.githubusercontent.com/86938974/170401782-8dd977b6-d81c-4c92-a906-0bdc5c3281a6.png)
-
-* 게시글 수정과 삭제
-
-![image](https://user-images.githubusercontent.com/86938974/170402996-8391eacc-d0cc-445a-800f-772b2e20f1e6.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403040-c3e4e682-3db8-484e-93b0-4d02c0f43a11.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403060-b119c4dc-3802-4494-b659-7a86a26ec370.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403098-30ae56d1-47ce-41b7-b8c8-7c5545d6e59f.png)
-
-* 321번 게시글 삭제 처리
-![image](https://user-images.githubusercontent.com/86938974/170403200-0b91772d-2495-4a8f-96ad-bf3c008e2efb.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403225-0b7f6ca5-4305-4dd7-824c-b9de81781173.png)
-
-* 사라진 것 확인
-![image](https://user-images.githubusercontent.com/86938974/170403268-a8ff4f2a-fb49-47e1-8626-df8151f1c5ee.png)
-
-* 제목+내용 검색과 페이징 처리
-
-![image](https://user-images.githubusercontent.com/86938974/170403436-a2ebb5e7-1196-4e7b-9bc0-266434bb2611.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403455-c46972ab-fa3f-4680-afb0-8936155b8675.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403475-537527e2-0bde-4145-be88-2ced6bb56d0a.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403496-a2329b8f-d8ba-4b78-acbe-3bd7ab881152.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403511-c6ab7530-3135-4170-915d-734b914b3179.png)
-
-![image](https://user-images.githubusercontent.com/86938974/170403533-afce882d-0a71-4222-b076-4f1b8a42e28b.png)
 
 
 
